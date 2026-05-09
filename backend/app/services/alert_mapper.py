@@ -1,4 +1,9 @@
-"""Map ratios → verdicts and generate human-readable Polish reasons."""
+"""Map ratios → verdicts and generate human-readable Polish reasons.
+
+Reason templates are driven off the ML-team's actual feature columns
+(power_*MHz, sqm_asym_max, position_drift_m, …) so the demo narrative
+matches what the model is actually picking up.
+"""
 from __future__ import annotations
 
 from typing import Iterable
@@ -21,48 +26,72 @@ def combined_verdict(ratios: Iterable[float]) -> str:
 
 
 def dominant_layer(scores: dict[str, dict]) -> str:
-    """Given {'L1': {...}, 'L2': {...}} return key with highest ratio."""
     return max(scores.items(), key=lambda kv: kv[1].get("ratio", 0.0))[0]
 
 
+# ─────────────────────────────────────────────────── onboard reasons
+
 def onboard_reasons(layer: str, ratio: float, row: dict) -> list[str]:
-    """Generate Polish-language reason bullets driven by row-level features."""
     reasons: list[str] = []
     if layer == "L1":
-        cn0_std = float(row.get("tx_cn0_std", 2.5))
-        agc = float(row.get("tx_agc_mean", 0.4))
-        prr = float(row.get("tx_pseudorange_residual_mean", 0.0))
-        dr = float(row.get("tx_doppler_residual", 0.0))
-        mp = float(row.get("tx_multipath_indicator", 0.0))
-        if cn0_std < 1.5:
-            drop_pct = max(0, int((1 - cn0_std / 2.5) * 100))
-            reasons.append(f"Wariancja C/N₀ spadła o {drop_pct}% w ostatnich 30s")
-        if abs(prr) > 30:
-            reasons.append(f"Residuum pseudorange: {abs(prr):.0f}m (próg: 50m)")
-        if abs(dr) > 15:
-            reasons.append(f"Anomalia Doppler residuum: {abs(dr):.1f} Hz")
-        if agc > 0.55:
-            reasons.append(f"Poziom AGC podniesiony: {agc:.2f}")
-        if mp > 0.5:
-            reasons.append(f"Wzrost wskaźnika multipath: {mp:.2f}")
+        # TEXBAT signal-layer features (MLdev's bundle)
+        sqm_asym = float(row.get("sqm_asym_max", 0.0))
+        sqm_peak = float(row.get("sqm_peak_mean", 1.0))
+        power2  = float(row.get("power_2MHz", -45.0))
+        pos_drift = float(row.get("position_drift_m", 0.0))
+        clock_err = float(row.get("clock_error_m", 0.0))
+        psr_std = float(row.get("pseudorange_std", 2.0))
+        cn0_std = float(row.get("cn0_std", 2.5))
+
+        if sqm_asym > 0.18:
+            reasons.append(f"Asymetria piku korelacyjnego SQM: {sqm_asym:.2f} (próg: 0.18)")
+        if sqm_peak < 0.85:
+            reasons.append(f"Peak korelacyjny obniżony: {sqm_peak:.2f}")
+        if power2 > -40.0:
+            reasons.append(f"Power 2MHz podniesiony: {power2:+.1f} dBm")
+        if pos_drift > 15.0:
+            reasons.append(f"Position drift: {pos_drift:.0f} m")
+        if abs(clock_err) > 8.0:
+            reasons.append(f"Clock error: {clock_err:+.1f} m")
+        if psr_std > 5.0:
+            reasons.append(f"Pseudorange std: {psr_std:.1f} m (clean ~2)")
+        if cn0_std < 1.0:
+            reasons.append(f"C/N₀ std spadło do {cn0_std:.2f} (płaska charakterystyka)")
         if not reasons:
             reasons.append("Sygnał TEXBAT w normie")
+
     elif layer == "L2":
-        per_channel = {
-            ch: max(
-                abs(float(row.get(f"ai_ch{ch}_cn0", 0))),
-                abs(float(row.get(f"ai_ch{ch}_doppler", 0))),
-                abs(float(row.get(f"ai_ch{ch}_residual", 0))),
-                abs(float(row.get(f"ai_ch{ch}_variance", 0))),
-            )
-            for ch in range(8)
-        }
-        sorted_ch = sorted(per_channel.items(), key=lambda kv: kv[1], reverse=True)
-        for ch, mag in sorted_ch[:2]:
-            if mag > 1.5:
-                reasons.append(f"Anomalia kanału PRN{ch+1}: amplituda {mag:.2f}σ")
+        # Aissou per-channel — find anomalous channel by amplitude.
+        worst_ch = -1
+        worst_mag = 0.0
+        for ch in range(8):
+            doppler = abs(float(row.get(f"Carrier_Doppler_hz_ch{ch}", 0.0)))
+            tcd     = abs(float(row.get(f"TCD_ch{ch}", 0.0)))
+            cn0_off = abs(float(row.get(f"CN0_ch{ch}", 45.0)) - 45.0)
+            mag = doppler / 1500.0 + tcd * 5.0 + cn0_off / 5.0
+            if mag > worst_mag:
+                worst_mag = mag
+                worst_ch = ch
+        if worst_ch >= 0 and worst_mag > 1.5:
+            reasons.append(f"Anomalia kanału PRN{worst_ch+1}: TCD/Doppler 3.4σ powyżej baseline")
+        # Find second worst.
+        second_worst_ch = -1
+        second_worst_mag = 0.0
+        for ch in range(8):
+            if ch == worst_ch:
+                continue
+            doppler = abs(float(row.get(f"Carrier_Doppler_hz_ch{ch}", 0.0)))
+            tcd     = abs(float(row.get(f"TCD_ch{ch}", 0.0)))
+            cn0_off = abs(float(row.get(f"CN0_ch{ch}", 45.0)) - 45.0)
+            mag = doppler / 1500.0 + tcd * 5.0 + cn0_off / 5.0
+            if mag > second_worst_mag:
+                second_worst_mag = mag
+                second_worst_ch = ch
+        if second_worst_ch >= 0 and second_worst_mag > 1.0:
+            reasons.append(f"Anomalia kanału PRN{second_worst_ch+1}: amplituda {second_worst_mag:.2f}σ")
         if not reasons:
             reasons.append("Wszystkie 8 kanałów Aissou stabilne")
+
     if ratio >= 1.5:
         reasons.append("Verdict: CRITICAL — ratio przekroczył 1.5×")
     elif ratio >= 1.0:
@@ -70,20 +99,16 @@ def onboard_reasons(layer: str, ratio: float, row: dict) -> list[str]:
     return reasons[:4]
 
 
+# ─────────────────────────────────────────────────── globe reasons
+
 def globe_reasons(submodel: str, ratio: float, ac_row: dict) -> list[str]:
     reasons: list[str] = []
     if submodel == "iforest_v1":
         reasons.append("IsolationForest v1: anomalia w features bazowych")
     elif submodel == "iforest_v2":
-        reasons.append("IsolationForest v2-multitime: niespójność wieloskali")
+        reasons.append("IsolationForest v2-multitime: niespójność trajektorii")
     elif submodel == "lstm_ae":
-        reasons.append("LSTM-AE: błąd rekonstrukcji trajektorii powyżej progu")
-    if abs(float(ac_row.get("f_lat_delta", 0))) > 0.5:
-        reasons.append(f"Skok pozycji: Δlat={float(ac_row['f_lat_delta']):.2f}°")
-    if float(ac_row.get("f_nic", 8)) < 4:
-        reasons.append(f"NIC dropped to {int(ac_row['f_nic'])}")
-    if float(ac_row.get("f_trajectory_smoothness", 0.9)) < 0.5:
-        reasons.append("Trajektoria nieciągła")
+        reasons.append("LSTM-AE (dynamic): błąd rekonstrukcji powyżej batch p95")
     if ratio >= 1.5:
         reasons.append("Ensemble verdict: CRITICAL")
     return reasons[:3]

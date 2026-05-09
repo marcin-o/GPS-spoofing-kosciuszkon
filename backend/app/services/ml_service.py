@@ -1,38 +1,52 @@
-"""Per-tick scoring layer for the live demo.
+"""Pre-score scenario CSVs with the ML-team's batch API, cache per-tick.
 
-Why this is its own thing instead of using ``ml.inference.score()``:
-the real ML pipeline (in ``ml/inference.py`` from the ML-team) is built
-around batch DataFrames with z-score baseline windows — appropriate for
-offline evaluation, not for the per-tick WS replay we drive at 10×
-wall-clock. So this module loads the synthetic stand-in models from
-``models/`` directly (via joblib + torch) and exposes a dict-in / dict-out
-shim shaped like the rest of the backend.
+Why pre-score: the ML-team's ``ml.inference.score_*`` functions are
+DataFrame-batch-shaped (z-score baseline window for TEXBAT, multi-time
+trajectory aggregation for OpenSky ensemble). They can't be called
+once per WS tick without losing the temporal context they need.
 
-Real models from the ML-team ship next to ours under ``models/``
-(``xgboost_texbat_v1.joblib`` etc.) and stay available for the offline
-batch path; we just don't drive the live WS through them yet.
+So: at first reference of a scenario we load the CSV, run the relevant
+batched scorers once, and stash a per-tick (or per-aircraft per-tick)
+result. The WS streams from cache.
+
+We DO NOT touch ``ml/inference.py`` — only call its public API.
+
+Two adaptations applied to make the real models behave on synthetic
+demo data:
+
+1. **AISSOU re-calibration** (the docstring on ``score_lstm_ae`` calls
+   out the same problem class): synthetic per-channel signal samples
+   are out-of-distribution for the real-data-trained classifier — it
+   reports ~0.9 mean proba on clean. We compute a per-scenario p99
+   threshold on the clean baseline (t<100, is_attack=0) and treat
+   that as the new "alert threshold". Predictions above scenario p99
+   = alert; below = OK. Original probas still streamed for display.
+
+2. **LSTM-AE dynamic threshold**: the ML-team's ensemble defaults to
+   ``threshold_mode='auto'``, which only switches to batch-p95 when the
+   batch is ≥50 aircraft. Our fleet is 12, so it stays on the training
+   threshold and flags everything. We call ``score_lstm_ae`` directly
+   with ``threshold_mode='dynamic'`` and roll our own OR-fusion.
 """
 from __future__ import annotations
 
 import logging
 import os
 import time
+from dataclasses import dataclass
 from pathlib import Path
 from threading import Lock
 from typing import Any
 
-import joblib
 import numpy as np
+import pandas as pd
 
-from ml.schemas import (
-    AISSOU_FEATURES,
-    F1_SCORES,
-    LSTM_TRAJ_DIM,
-    LSTM_TRAJ_LEN,
-    MODEL_VERSIONS,
-    OPENSKY_FEATURES,
-    TEXBAT_FEATURES,
-    THRESHOLDS,
+from ml.inference import (
+    score_aissou,
+    score_lstm_ae,
+    score_opensky,
+    score_opensky_multitime,
+    score_texbat,
 )
 
 logger = logging.getLogger(__name__)
@@ -44,268 +58,264 @@ _MODELS_DIR = Path(
     )
 ).resolve()
 
-_cache: dict[str, Any] = {}
-_load_lock = Lock()
 _warmed = False
 _latency_cache: dict[str, float] = {}
 
 
-# ---------------------------------------------------------------- LSTM-AE
+# ─────────────────────────────────────────────────── per-scenario cache
+
+@dataclass
+class OnboardScored:
+    n_ticks: int
+    l1_proba: list[float]
+    l1_threshold: float
+    l1_alert: list[bool]
+    l1_model_version: str
+    l2_proba: list[float]
+    l2_threshold_calibrated: float
+    l2_alert: list[bool]
+    l2_model_version: str
 
 
-def _build_lstm_ae():
-    import torch
-    from torch import nn
-
-    class LSTMAE(nn.Module):
-        def __init__(self, dim: int, hidden: int):
-            super().__init__()
-            self.encoder = nn.LSTM(dim, hidden, batch_first=True)
-            self.decoder = nn.LSTM(hidden, dim, batch_first=True)
-
-        def forward(self, x):
-            _, (h, _) = self.encoder(x)
-            seq_len = x.shape[1]
-            repeated = h[-1].unsqueeze(1).repeat(1, seq_len, 1)
-            out, _ = self.decoder(repeated)
-            return out
-
-    return LSTMAE
+@dataclass
+class GlobeScored:
+    n_ticks: int
+    aircraft_per_tick: list[list[dict]]
+    # Each entry: list of {icao24, callsign, country, position dict,
+    # ensemble_score: ratio/threshold, sub_scores, dominant_submodel,
+    # verdict}
 
 
-def _load_lstm_ae() -> dict:
-    if "lstm_ae" in _cache:
-        return _cache["lstm_ae"]
-    import torch
-
-    path = _MODELS_DIR / "lstm_ae_v1.pt"
-    if not path.exists():
-        raise FileNotFoundError(
-            f"synthetic LSTM-AE not found at {path}. Run `make ml-train` to build it."
-        )
-    blob = torch.load(path, map_location="cpu", weights_only=False)
-    cls = _build_lstm_ae()
-    model = cls(dim=blob["dim"], hidden=blob["hidden"])
-    model.load_state_dict(blob["state_dict"])
-    model.eval()
-    _cache["lstm_ae"] = {
-        "model": model,
-        "mean": np.array(blob["mean"], dtype=np.float32),
-        "std": np.array(blob["std"], dtype=np.float32),
-        "threshold": float(blob["threshold"]),
-        "version": blob["version"],
-    }
-    return _cache["lstm_ae"]
+_onboard_cache: dict[str, OnboardScored] = {}
+_globe_cache: dict[str, GlobeScored] = {}
+_cache_lock = Lock()
 
 
-# ---------------------------------------------------------------- joblib bundles
+# ─────────────────────────────────────────────────── ONBOARD pre-scoring
+
+def _verdict_from_ratio(ratio: float) -> str:
+    if ratio >= 1.5:
+        return "CRITICAL"
+    if ratio >= 1.0:
+        return "WARNING"
+    return "OK"
 
 
-_FILE_BY_NAME = {
-    "texbat": "texbat_xgb_v1.joblib",
-    "aissou": "aissou_xgb_bin_v1.joblib",
-    "iforest_v1": "opensky_iforest-v1.joblib",
-    "iforest_v2": "opensky_iforest-v2-multitime.joblib",
-}
+def _prescore_onboard(scenario_id: str, csv_path: Path) -> OnboardScored:
+    df = pd.read_csv(csv_path)
+    n = len(df)
+    logger.info("pre-scoring onboard scenario %s (%d rows)", scenario_id, n)
 
+    # ───── L1 — TEXBAT (built-in z-score baseline window does its job)
+    r_tx = score_texbat(df, baseline_window=(30, 100), t_col="t_int")
+    if "error" in r_tx:
+        raise RuntimeError(f"TEXBAT scoring failed for {scenario_id}: {r_tx['error']}")
+    l1_proba = list(map(float, r_tx["scores"]))
+    l1_thr = float(r_tx["threshold"])
+    l1_alert = [p >= l1_thr for p in l1_proba]
+    l1_version = "texbat-xgb-v1"
 
-def _load_joblib(name: str) -> dict:
-    with _load_lock:
-        if name in _cache:
-            return _cache[name]
-        path = _MODELS_DIR / _FILE_BY_NAME[name]
-        if not path.exists():
-            raise FileNotFoundError(
-                f"synthetic model {name} not found at {path}. "
-                "Run `make ml-train` to build the synthetic stand-ins."
-            )
-        bundle = joblib.load(path)
-        _cache[name] = bundle
-        logger.info("loaded synthetic model %s from %s", name, path)
-        return bundle
+    # ───── L2 — AISSOU (per-scenario p99 calibration on clean baseline)
+    r_ai = score_aissou(df)
+    l2_proba = list(map(float, r_ai["scores"]))
+    # Clean baseline = first 100 ticks where is_attack==0.
+    is_attack = df["is_attack"].astype(int).tolist() if "is_attack" in df.columns else [0] * n
+    baseline = [p for i, p in enumerate(l2_proba) if i < 100 and is_attack[i] == 0]
+    if len(baseline) >= 5:
+        # p99 of baseline + a small floor so identical-clean scenarios still threshold
+        thr = float(max(np.percentile(baseline, 99), 0.5))
+    else:
+        thr = 0.5
+    l2_alert = [p >= thr for p in l2_proba]
+    l2_version = "aissou-xgb-binary-v1"
+    logger.info("  AISSOU calibrated threshold for %s: %.4f (baseline n=%d)",
+                scenario_id, thr, len(baseline))
 
-
-# ---------------------------------------------------------------- per-scenario scoring
-
-
-def _vectorize(payload: dict, feature_list: list[str]) -> np.ndarray:
-    vec = np.zeros((1, len(feature_list)), dtype=np.float32)
-    for i, name in enumerate(feature_list):
-        try:
-            vec[0, i] = float(payload.get(name, 0.0))
-        except (TypeError, ValueError):
-            vec[0, i] = 0.0
-    return vec
-
-
-def _texbat_score(payload: dict) -> dict[str, Any]:
-    bundle = _load_joblib("texbat")
-    model = bundle["model"]
-    feats = bundle["features"]
-    x = _vectorize(payload, feats)
-    t0 = time.perf_counter()
-    proba = float(model.predict_proba(x)[0, 1])
-    dt = (time.perf_counter() - t0) * 1000
-    threshold = THRESHOLDS["texbat"]
-    return {
-        "ratio": float(proba / threshold) if threshold > 0 else proba,
-        "raw": proba,
-        "threshold": threshold,
-        "model_version": MODEL_VERSIONS["texbat"],
-        "f1": F1_SCORES["texbat"],
-        "inference_ms": round(dt, 2),
-    }
-
-
-def _aissou_score(payload: dict) -> dict[str, Any]:
-    bundle = _load_joblib("aissou")
-    model = bundle["model"]
-    feats = bundle["features"]
-    x = _vectorize(payload, feats)
-    t0 = time.perf_counter()
-    proba = float(model.predict_proba(x)[0, 1])
-    dt = (time.perf_counter() - t0) * 1000
-    threshold = THRESHOLDS["aissou"]
-    return {
-        "ratio": float(proba / threshold) if threshold > 0 else proba,
-        "raw": proba,
-        "threshold": threshold,
-        "model_version": MODEL_VERSIONS["aissou"],
-        "f1": F1_SCORES["aissou"],
-        "inference_ms": round(dt, 2),
-    }
-
-
-def _iforest_score(name: str, payload: dict) -> dict[str, Any]:
-    bundle = _load_joblib(name)
-    model = bundle["model"]
-    feats = bundle["features"]
-    x = _vectorize(payload, feats)
-    t0 = time.perf_counter()
-    df = float(model.decision_function(x)[0])
-    dt = (time.perf_counter() - t0) * 1000
-    raw = max(0.0, -df * 5.0)
-    threshold = 1.0
-    short = "iforest_v1" if name == "iforest_v1" else "iforest_v2"
-    return {
-        "ratio": raw / threshold,
-        "raw": raw,
-        "threshold": threshold,
-        "model_version": MODEL_VERSIONS[short],
-        "inference_ms": round(dt, 2),
-    }
-
-
-def _lstm_ae_score(trajectory: list[list[float]] | None) -> dict[str, Any]:
-    bundle = _load_lstm_ae()
-    import torch
-
-    if not trajectory:
-        return {
-            "ratio": 0.0,
-            "raw": 0.0,
-            "threshold": bundle["threshold"],
-            "model_version": MODEL_VERSIONS["lstm_ae"],
-            "inference_ms": 0.0,
-        }
-    arr = np.asarray(trajectory, dtype=np.float32)
-    if arr.ndim == 1:
-        arr = arr.reshape(-1, LSTM_TRAJ_DIM)
-    if arr.shape[1] != LSTM_TRAJ_DIM:
-        pad = np.zeros((arr.shape[0], LSTM_TRAJ_DIM), dtype=np.float32)
-        clip = min(arr.shape[1], LSTM_TRAJ_DIM)
-        pad[:, :clip] = arr[:, :clip]
-        arr = pad
-    if arr.shape[0] < LSTM_TRAJ_LEN:
-        pad = np.zeros((LSTM_TRAJ_LEN - arr.shape[0], LSTM_TRAJ_DIM), dtype=np.float32)
-        if arr.shape[0]:
-            pad[:] = arr[-1]
-        arr = np.vstack([arr, pad])
-    arr = arr[-LSTM_TRAJ_LEN:]
-    norm = (arr - bundle["mean"]) / bundle["std"]
-    t = torch.tensor(norm).unsqueeze(0)
-    t0 = time.perf_counter()
-    with torch.no_grad():
-        recon = bundle["model"](t)
-        err = float(((recon - t) ** 2).mean().item())
-    dt = (time.perf_counter() - t0) * 1000
-    threshold = bundle["threshold"]
-    return {
-        "ratio": err / threshold if threshold > 0 else err,
-        "raw": err,
-        "threshold": threshold,
-        "model_version": MODEL_VERSIONS["lstm_ae"],
-        "inference_ms": round(dt, 2),
-    }
-
-
-def _opensky_ensemble_score(payload: dict) -> dict[str, Any]:
-    sub_v1 = _iforest_score("iforest_v1", payload)
-    sub_v2 = _iforest_score("iforest_v2", payload)
-    traj = payload.get("trajectory")
-    sub_lstm = _lstm_ae_score(traj)
-
-    sub_scores = {"iforest_v1": sub_v1, "iforest_v2": sub_v2, "lstm_ae": sub_lstm}
-    ratios = [(k, v["ratio"]) for k, v in sub_scores.items()]
-    dominant_key, dominant_ratio = max(ratios, key=lambda kv: kv[1])
-    total_ms = sum(v["inference_ms"] for v in sub_scores.values())
-    return {
-        "ratio": float(dominant_ratio),
-        "raw": float(dominant_ratio),
-        "threshold": 1.0,
-        "model_version": MODEL_VERSIONS["opensky_ensemble"],
-        "f1": F1_SCORES["opensky_ensemble"],
-        "inference_ms": round(total_ms, 2),
-        "sub_scores": {
-            k: {
-                "ratio": v["ratio"],
-                "raw": v["raw"],
-                "threshold": v["threshold"],
-                "model_version": v["model_version"],
-            }
-            for k, v in sub_scores.items()
-        },
-        "dominant_submodel": dominant_key,
-    }
-
-
-# ---------------------------------------------------------------- public API
-
-
-def run(scenario: str, payload: dict) -> dict[str, Any]:
-    s = scenario.lower()
-    if s in ("texbat", "l1", "signal"):
-        return _texbat_score(payload)
-    if s in ("aissou", "l2", "channel"):
-        return _aissou_score(payload)
-    if s in ("opensky", "opensky_ensemble", "ensemble", "l3"):
-        return _opensky_ensemble_score(payload)
-    raise ValueError(
-        f"Unknown scenario: {scenario!r}. "
-        "Expected texbat | aissou | opensky_ensemble."
+    return OnboardScored(
+        n_ticks=n,
+        l1_proba=l1_proba, l1_threshold=l1_thr, l1_alert=l1_alert,
+        l1_model_version=l1_version,
+        l2_proba=l2_proba, l2_threshold_calibrated=thr, l2_alert=l2_alert,
+        l2_model_version=l2_version,
     )
 
 
-def warm_up() -> dict[str, float]:
-    global _warmed
-    samples: list[tuple[str, dict]] = [
-        ("texbat", {f: 0.0 for f in TEXBAT_FEATURES}),
-        ("aissou", {f: 0.0 for f in AISSOU_FEATURES}),
-        ("opensky_ensemble", {
-            **{f: 0.0 for f in OPENSKY_FEATURES},
-            "trajectory": [[54.0, 18.0, 10000, 230, 90]] * LSTM_TRAJ_LEN,
-        }),
-    ]
-    out: dict[str, float] = {}
-    for name, payload in samples:
-        t0 = time.perf_counter()
+def get_onboard_scored(scenario_id: str, csv_path: Path) -> OnboardScored:
+    with _cache_lock:
+        if scenario_id in _onboard_cache:
+            return _onboard_cache[scenario_id]
+        out = _prescore_onboard(scenario_id, csv_path)
+        _onboard_cache[scenario_id] = out
+        return out
+
+
+# ─────────────────────────────────────────────────── GLOBE pre-scoring
+
+def _normalize_v1(score: float, ref: float = 0.5) -> float:
+    return float(score / ref)
+
+
+def _normalize_v2(score: float, ref: float = 0.5) -> float:
+    return float(score / ref)
+
+
+def _normalize_lstm(score: float, threshold: float) -> float:
+    if threshold <= 0:
+        return 0.0
+    return float(score / threshold)
+
+
+def _prescore_globe(scenario_id: str, csv_path: Path) -> GlobeScored:
+    df = pd.read_csv(csv_path)
+    n_ticks = int(df["snapshot_idx"].max()) + 1
+    logger.info("pre-scoring globe scenario %s (%d ticks, %d aircraft)",
+                scenario_id, n_ticks, df["icao24"].nunique())
+
+    # We pre-score by sliding window: at tick t, take all snapshots up
+    # to (and including) t. This gives the multi-time scorers
+    # progressively more context.
+    aircraft_per_tick: list[list[dict]] = []
+
+    # Pre-compute static aircraft metadata.
+    meta = (df.groupby("icao24")
+              .agg({"callsign": "first", "origin_country": "first"})
+              .to_dict("index"))
+
+    for tick in range(n_ticks):
+        snap = df[df["snapshot_idx"] <= tick]
+        latest = snap.sort_values("snapshot_idx").groupby("icao24").tail(1).reset_index(drop=True)
+
+        # L3v1: single-snapshot
         try:
-            run(name, payload)
-            dt = (time.perf_counter() - t0) * 1000
-            out[name] = round(dt, 2)
+            r_v1 = score_opensky(latest)
         except Exception as exc:
-            logger.warning("warm-up failed for %s: %s", name, exc)
-            out[name] = -1.0
+            logger.warning("score_opensky failed at tick %d: %s", tick, exc)
+            r_v1 = {"scores": [], "predictions": [], "kept_indices": []}
+        v1_score_by_icao: dict[str, tuple[float, int]] = {}
+        for idx, sc, pr in zip(r_v1.get("kept_indices", []),
+                                r_v1.get("scores", []),
+                                r_v1.get("predictions", [])):
+            icao = latest.iloc[idx]["icao24"] if idx < len(latest) else None
+            if icao:
+                v1_score_by_icao[icao] = (float(sc), int(pr))
+
+        # L3v2: multitime — needs ≥4 snapshots per aircraft (drop earlier ticks)
+        v2_score_by_icao: dict[str, tuple[float, int]] = {}
+        if tick >= 3:
+            try:
+                r_v2 = score_opensky_multitime(snap)
+                for icao, sc, pr in zip(r_v2.get("aircraft", []),
+                                          r_v2.get("scores", []),
+                                          r_v2.get("predictions", [])):
+                    v2_score_by_icao[icao] = (float(sc), int(pr))
+            except Exception as exc:
+                logger.warning("score_opensky_multitime failed at tick %d: %s", tick, exc)
+
+        # L4: LSTM-AE — dynamic threshold per call (small batch ⇒ rank-based)
+        lstm_score_by_icao: dict[str, tuple[float, int]] = {}
+        lstm_threshold_used: float | None = None
+        if tick >= 3:
+            try:
+                r_lstm = score_lstm_ae(snap, threshold_mode="dynamic")
+                lstm_threshold_used = float(r_lstm.get("threshold", 0.0))
+                for icao, sc, pr in zip(r_lstm.get("aircraft", []),
+                                          r_lstm.get("scores", []),
+                                          r_lstm.get("predictions", [])):
+                    lstm_score_by_icao[icao] = (float(sc), int(pr))
+            except Exception as exc:
+                logger.warning("score_lstm_ae failed at tick %d: %s", tick, exc)
+
+        # OR-fusion: ensemble_pred = any sub-model alerts; ratio = max normalized.
+        rows: list[dict] = []
+        all_icao = sorted(set(v1_score_by_icao) | set(v2_score_by_icao) | set(lstm_score_by_icao)
+                          | set(latest["icao24"].tolist()))
+        for icao in all_icao:
+            ac_meta = meta.get(icao, {"callsign": icao, "origin_country": "?"})
+            ac_row = latest[latest["icao24"] == icao]
+            if ac_row.empty:
+                continue
+            ar = ac_row.iloc[0]
+
+            v1_s, v1_p = v1_score_by_icao.get(icao, (None, 0))
+            v2_s, v2_p = v2_score_by_icao.get(icao, (None, 0))
+            l_s, l_p   = lstm_score_by_icao.get(icao, (None, 0))
+
+            n1 = _normalize_v1(v1_s) if v1_s is not None else 0.0
+            n2 = _normalize_v2(v2_s) if v2_s is not None else 0.0
+            n_lstm = _normalize_lstm(l_s, lstm_threshold_used) if (l_s is not None and lstm_threshold_used) else 0.0
+
+            ratios = {"iforest_v1": n1, "iforest_v2": n2, "lstm_ae": n_lstm}
+            dominant = max(ratios.items(), key=lambda kv: kv[1])[0]
+            ensemble_ratio = max(ratios.values())
+            ensemble_pred = bool(v1_p or v2_p or l_p)
+
+            rows.append({
+                "icao24": icao,
+                "callsign": ac_meta.get("callsign", icao),
+                "origin_country": ac_meta.get("origin_country", "?"),
+                "position": {
+                    "lat": float(ar["latitude"]),
+                    "lon": float(ar["longitude"]),
+                    "alt": float(ar["baro_altitude"]),
+                    "velocity": float(ar["velocity"]),
+                    "true_track": float(ar["true_track"]),
+                    "vertical_rate": float(ar.get("vertical_rate", 0.0)),
+                    "on_ground": bool(ar.get("on_ground", False)),
+                },
+                "ensemble_score": {"ratio": float(ensemble_ratio), "threshold": 1.0},
+                "sub_scores": {
+                    "iforest_v1": {"ratio": float(n1)},
+                    "iforest_v2": {"ratio": float(n2)},
+                    "lstm_ae":    {"ratio": float(n_lstm)},
+                },
+                "dominant_submodel": dominant,
+                "verdict": _verdict_from_ratio(ensemble_ratio),
+                "is_anomaly": bool(int(ar.get("is_anomaly", 0))),
+                "anomaly_kind": str(ar.get("anomaly_kind", "")),
+                "ensemble_pred": ensemble_pred,
+            })
+        aircraft_per_tick.append(rows)
+
+    return GlobeScored(n_ticks=n_ticks, aircraft_per_tick=aircraft_per_tick)
+
+
+def get_globe_scored(scenario_id: str, csv_path: Path) -> GlobeScored:
+    with _cache_lock:
+        if scenario_id in _globe_cache:
+            return _globe_cache[scenario_id]
+        out = _prescore_globe(scenario_id, csv_path)
+        _globe_cache[scenario_id] = out
+        return out
+
+
+# ─────────────────────────────────────────────────── warm-up + latency
+
+def warm_up() -> dict[str, float]:
+    """Kick model files off disk into RAM at startup so the first WS tick
+    isn't 800 ms slower than the rest. Doesn't pre-score scenarios — that
+    happens lazily on first WS connect."""
+    global _warmed
+    out: dict[str, float] = {}
+    samples = [
+        ("texbat",  "scripts/.warmup_texbat.csv"),
+        ("aissou",  "scripts/.warmup_aissou.csv"),
+        ("opensky", "scripts/.warmup_opensky.csv"),
+    ]
+    # Build minimal in-memory frames just to force model load.
+    try:
+        from ml.inference import load_model
+        t0 = time.perf_counter()
+        load_model("texbat"); out["texbat"] = round((time.perf_counter() - t0) * 1000, 2)
+        t0 = time.perf_counter()
+        load_model("aissou"); out["aissou"] = round((time.perf_counter() - t0) * 1000, 2)
+        t0 = time.perf_counter()
+        load_model("opensky"); out["opensky_iforest_v1"] = round((time.perf_counter() - t0) * 1000, 2)
+        t0 = time.perf_counter()
+        load_model("opensky_multi"); out["opensky_iforest_v2"] = round((time.perf_counter() - t0) * 1000, 2)
+        t0 = time.perf_counter()
+        load_model("lstm_ae"); out["lstm_ae"] = round((time.perf_counter() - t0) * 1000, 2)
+    except Exception as exc:
+        logger.warning("warm-up failed: %s", exc)
     _latency_cache.update(out)
     _warmed = True
     return out
