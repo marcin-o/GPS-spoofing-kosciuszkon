@@ -446,12 +446,18 @@ def score_lstm_ae(snapshots_df: pd.DataFrame, threshold_mode: str = 'auto') -> d
 
 # ---------- Ensemble ----------
 
-def score_opensky_ensemble(snapshots_df: pd.DataFrame, *, use_lstm_ae: bool = True) -> dict[str, Any]:
+def score_opensky_ensemble(snapshots_df: pd.DataFrame, *, use_lstm_ae: bool = False) -> dict[str, Any]:
     """Ensemble L3v1 + L3v2 + (optionally) L4 LSTM-AE on multi-time OpenSky snapshots.
 
     Each aircraft gets predictions from each model. Final:
     - ensemble_pred = OR (any model flags) — maximizes recall, complementary attack coverage
     - ensemble_score = max(score / model_threshold) — normalized cross-model score
+
+    Note on use_lstm_ae default: set to False after attack-intensity sweep
+    (docs/highroi/07_attack_intensity_sweep.png) showed L4 v2 LSTM-AE underperforms
+    L3v2 IsolationForest at every attack intensity on real OpenSky data — and
+    achieving high recall requires FPR=19% which is unacceptable for aviation.
+    Pass use_lstm_ae=True only for diagnostic / research comparisons.
     """
     sort_col = 'snapshot_idx' if 'snapshot_idx' in snapshots_df.columns else 'snapshot_time'
     if sort_col not in snapshots_df.columns:
@@ -512,6 +518,92 @@ def score_opensky_ensemble(snapshots_df: pd.DataFrame, *, use_lstm_ae: bool = Tr
         'n_flagged_ensemble': int(df['ensemble_pred'].sum()),
         'lstm_ae_used':       use_lstm_ae and _HAS_TORCH,
         'model_version':      'opensky-ensemble-v1',
+    }
+
+
+# ---------- Cross-domain unified score ----------
+
+def _alert_level(score: float) -> str:
+    """Match FE thresholds (frontend/mocks/fixtures.ts levelFor)."""
+    if score >= 0.7: return 'critical'
+    if score >= 0.4: return 'warn'
+    return 'ok'
+
+
+def score_unified(
+    *,
+    texbat_features: Optional[pd.DataFrame] = None,
+    aissou_features: Optional[pd.DataFrame] = None,
+    opensky_snapshots: Optional[pd.DataFrame] = None,
+    asset_id: Optional[str] = None,
+) -> dict[str, Any]:
+    """Cross-domain fusion: collapse L1 (signal) + L2 (UAV) + L3v2 (aviation traj)
+    into one per-incident risk score. All inputs optional — pass what you have.
+
+    Each layer's score is min-max normalized to [0,1] using its training-time
+    distribution (already done by score_*), then unified = max() under
+    independent-evidence assumption (probabilistic OR upper bound).
+
+    Returns:
+        {
+          'asset_id': str | None,
+          'unified_score': float in [0,1],
+          'alert_level': 'ok' | 'warn' | 'critical',
+          'layers': {
+            'L1_texbat':    {'score': float, 'pred': 0|1, 'present': bool},
+            'L2_aissou':    {'score': float, 'pred': 0|1, 'present': bool},
+            'L3v2_opensky': {'score': float, 'pred': 0|1, 'present': bool},
+          },
+          'evidence': [str, ...]   # human-readable per-layer triggers
+        }
+    """
+    layers: dict[str, dict] = {
+        'L1_texbat':    {'score': 0.0, 'pred': 0, 'present': False},
+        'L2_aissou':    {'score': 0.0, 'pred': 0, 'present': False},
+        'L3v2_opensky': {'score': 0.0, 'pred': 0, 'present': False},
+    }
+    evidence: list[str] = []
+
+    if texbat_features is not None and len(texbat_features) > 0:
+        r = score_texbat(texbat_features)
+        scores = r.get('scores', [])
+        preds = r.get('predictions', [])
+        s = float(np.max(scores)) if len(scores) else 0.0
+        p = int(np.any(np.array(preds) == 1)) if len(preds) else 0
+        layers['L1_texbat'] = {'score': s, 'pred': p, 'present': True}
+        if p:
+            evidence.append(f'L1: receiver-side anomaly @ p={s:.2f}')
+
+    if aissou_features is not None and len(aissou_features) > 0:
+        r = score_aissou(aissou_features)
+        scores = r.get('scores', [])
+        preds = r.get('predictions', [])
+        s = float(np.max(scores)) if len(scores) else 0.0
+        p = int(np.any(np.array(preds) == 1)) if len(preds) else 0
+        layers['L2_aissou'] = {'score': s, 'pred': p, 'present': True}
+        if p:
+            evidence.append(f'L2: UAV channel signature @ p={s:.2f}')
+
+    if opensky_snapshots is not None and len(opensky_snapshots) > 0:
+        r = score_opensky_ensemble(opensky_snapshots, use_lstm_ae=False)
+        ens_scores = r.get('ensemble_scores', [])
+        ens_preds = r.get('ensemble_predictions', [])
+        s = float(np.max(ens_scores)) if len(ens_scores) else 0.0
+        p = int(np.any(np.array(ens_preds) == 1)) if len(ens_preds) else 0
+        # ensemble_score is normalized score/threshold ratio → can be >1; cap at 1 for unified scale
+        s_norm = float(min(s, 1.0))
+        layers['L3v2_opensky'] = {'score': s_norm, 'pred': p, 'present': True}
+        if p:
+            evidence.append(f'L3v2: trajectory mismatch @ p={s_norm:.2f}')
+
+    unified = max(l['score'] for l in layers.values())
+    return {
+        'asset_id':      asset_id,
+        'unified_score': float(unified),
+        'alert_level':   _alert_level(unified),
+        'layers':        layers,
+        'evidence':      evidence,
+        'model_version': 'unified-v1',
     }
 
 
