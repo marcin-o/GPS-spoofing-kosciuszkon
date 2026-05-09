@@ -1,0 +1,16 @@
+numpy
+pandas
+scipy
+h5py
+mat73
+openpyxl
+scikit-learn
+xgboost
+lightgbm
+shap
+matplotlib
+seaborn
+jupyter
+ipykernel
+tqdm
+pyarrow

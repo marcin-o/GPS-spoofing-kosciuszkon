@@ -216,3 +216,31 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Project: datasets and trained models (live on Ares, not in git)
+data/
+models/
+*.pkl
+*.joblib
+*.mat
+*.bin
+*.h5
+*.hdf5
+*.npz
+*.parquet
+*.feather
+*.xlsx
+*.csv
+
+# Jupyter checkpoints
+.ipynb_checkpoints/
+
+# Slurm logs
+slurm-*.out
+*.slurm.log
+
+# Local results / runs
+results/
+runs/
+wandb/
+mlruns/
