@@ -220,3 +220,10 @@ __marimo__/
 
 # debug artifacts
 .tmp-*
+
+.idea/
+
+# OS noise
+.DS_Store
+Thumbs.db
+desktop.ini
