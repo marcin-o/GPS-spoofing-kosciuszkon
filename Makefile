@@ -11,13 +11,13 @@ JUPYTER := $(VENV)/bin/jupyter
 NOTEBOOK := ml/notebooks/03_model_training.ipynb
 MODELS_DIR := $(PWD)/models
 
-.PHONY: help install install-backend install-frontend dev demo backend frontend ml-train ml-smoke train test voice clean
+.PHONY: help install install-backend install-frontend dev demo backend frontend ml-smoke scenarios train test voice clean
 
 help:
 	@echo "Targets:"
 	@echo "  install   — backend venv + pip deps + frontend npm deps"
-	@echo "  ml-train  — train synthetic stand-in models into models/  (~5s)"
-	@echo "  ml-smoke  — run python -m ml.inference --all  (smoke test)"
+	@echo "  scenarios — regenerate backend/app/scenarios/*.csv (deterministic, fixed seed)"
+	@echo "  ml-smoke  — run ML-team's CLI: python -m ml.inference --all (needs his parquet datasets)"
 	@echo "  dev       — run backend (uvicorn --reload) and frontend (next dev) in parallel"
 	@echo "  demo      — same as dev (real backend wired through NEXT_PUBLIC_API_BASE)"
 	@echo "  test      — pytest backend/tests"
@@ -50,14 +50,13 @@ backend:
 frontend:
 	cd frontend && npm run dev -- --hostname 127.0.0.1
 
-# ML — synthetic stand-ins powering the live demo. The ML-team's real
-# models in models/xgboost_*.joblib are batch-shaped (DataFrame + baseline
-# windows); they're not driven through the WS replay yet.
-ml-train:
-	GPS_SENTINEL_MODELS=$(MODELS_DIR) PYTHONPATH=. $(VENV)/bin/python -m ml.train_synthetic
+# Regenerate scenario CSVs in MLdev's expected schema.
+scenarios:
+	PYTHONPATH=. $(VENV)/bin/python scripts/generate_scenarios.py
 
+# Wraps MLdev's CLI — needs his parquet datasets at $GPS_SENTINEL_DATA.
 ml-smoke:
-	GPS_SENTINEL_MODELS=$(MODELS_DIR) PYTHONPATH=.:backend $(VENV)/bin/python scripts/test_inference.py
+	GPS_SENTINEL_MODELS=$(MODELS_DIR) PYTHONPATH=. $(VENV)/bin/python -m ml.inference --all
 
 train:
 	@if [ ! -f $(NOTEBOOK) ]; then \

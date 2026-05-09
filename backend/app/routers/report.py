@@ -9,7 +9,14 @@ from fastapi import APIRouter, Query
 from fastapi.responses import StreamingResponse
 
 from app.services import ml_service, replay_engine
-from ml.schemas import F1_SCORES, MODEL_VERSIONS
+
+# Mirror of ML-team's bundle metadata. Inlined here so the report doesn't
+# depend on legacy ml.schemas module.
+_LAYERS = [
+    ("L1 (signal)",  "XGBoost",   "texbat-xgb-v1",                 0.984),
+    ("L2 (channel)", "XGBoost",   "aissou-xgb-binary-v1",          0.976),
+    ("L3 ensemble",  "OR-fusion", "opensky-ensemble-v1",           0.935),
+]
 
 router = APIRouter()
 
@@ -55,12 +62,8 @@ async def get_report(
 
     # Model versions table.
     rows = [["Layer", "Model", "Version", "F1"]]
-    for layer, key in (("L1 (signal)", "texbat"), ("L2 (channel)", "aissou"),
-                       ("L3 ensemble", "opensky_ensemble")):
-        rows.append([layer,
-                     "XGBoost" if "xgb" in MODEL_VERSIONS[key] else
-                     ("OR-fusion" if "ensemble" in MODEL_VERSIONS[key] else "—"),
-                     MODEL_VERSIONS[key], f"{F1_SCORES[key]:.3f}"])
+    for layer, kind, version, f1 in _LAYERS:
+        rows.append([layer, kind, version, f"{f1:.3f}"])
     tbl = Table(rows, colWidths=[100, 120, 180, 50])
     tbl.setStyle(TableStyle([
         ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#222")),
