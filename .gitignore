@@ -265,3 +265,26 @@ mlruns/
 .DS_Store
 Thumbs.db
 desktop.ini
+
+# --- GNSS Defense Monitor: corrections to upstream Python rules ---
+# `lib/` on line 17 (Python packaging) was unintentionally hiding the frontend
+# /lib directory which holds TypeScript types, utils, and API helpers.
+!frontend/lib/
+!frontend/lib/**
+
+# --- GNSS Defense Monitor: regenerable artifacts ---
+# ML model files (rebuild with `make ml-train` / `python -m ml.inference --train`).
+# joblib + torch state-dicts; ~2.5 MB total but binary, reproducible from fixed seed.
+/models/
+
+# Playwright deps + harness output (rebuild with `cd e2e && npm install`).
+/e2e/node_modules/
+
+# Screenshots from the e2e Playwright sweep (rebuild with `node e2e/screenshots.mjs`).
+# Big PNGs, not deterministic, no value in version history.
+/e2e_screenshots/
+
+# Next.js build output (also covered by frontend/.gitignore but be explicit).
+/frontend/.next/
+/frontend/out/
+/frontend/next-env.d.ts
