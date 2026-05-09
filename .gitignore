@@ -217,20 +217,30 @@ __marimo__/
 # Streamlit
 .streamlit/secrets.toml
 
-# Project: datasets and trained models (live on Ares, not in git)
-data/
-models/
-*.pkl
-*.joblib
+# === Datasets ===
+# Raw datasets live on Ares — too big and publicly downloadable
+data/texbat/
+data/aissou/
+# Pre-built feature flatfile too large to commit (regenerate from data/aissou/ xlsx)
+data/features/aissou_flat.parquet
+
+# Bulk binary formats — generic block (we don't want raw GNSS dumps in git)
 *.mat
 *.bin
 *.h5
 *.hdf5
 *.npz
-*.parquet
-*.feather
 *.xlsx
-*.csv
+*.pkl
+
+# What IS tracked (no rule needed, just for reference):
+#   models/*.joblib, models/*.pt        (trained models, ~15 MB total)
+#   data/features/*.parquet             (per-scenario TEXBAT features, ~750 KB)
+#   data/opensky/*.parquet              (state vectors + multi-time + live tracks, ~1.1 MB)
+#   docs/highroi/*.{png,csv,json}       (validation analysis outputs)
+
+# Local-only secrets
+.opensky_credentials
 
 # Jupyter checkpoints
 .ipynb_checkpoints/
