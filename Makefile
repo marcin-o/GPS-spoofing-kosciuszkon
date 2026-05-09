@@ -45,17 +45,19 @@ demo:
 	NEXT_PUBLIC_USE_MSW=false $(MAKE) -j2 backend frontend
 
 backend:
-	cd backend && GPS_SENTINEL_MODELS=$(MODELS_DIR) PYTHONPATH=.:.. ../$(VENV)/bin/uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+	cd backend && GPS_SENTINEL_MODELS=$(MODELS_DIR) PYTHONPATH=.:.. ../$(VENV)/bin/uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 
 frontend:
-	cd frontend && npm run dev
+	cd frontend && npm run dev -- --hostname 127.0.0.1
 
-# ML
+# ML — synthetic stand-ins powering the live demo. The ML-team's real
+# models in models/xgboost_*.joblib are batch-shaped (DataFrame + baseline
+# windows); they're not driven through the WS replay yet.
 ml-train:
-	GPS_SENTINEL_MODELS=$(MODELS_DIR) PYTHONPATH=. $(VENV)/bin/python -m ml.inference --train
+	GPS_SENTINEL_MODELS=$(MODELS_DIR) PYTHONPATH=. $(VENV)/bin/python -m ml.train_synthetic
 
 ml-smoke:
-	GPS_SENTINEL_MODELS=$(MODELS_DIR) PYTHONPATH=. $(VENV)/bin/python -m ml.inference --all
+	GPS_SENTINEL_MODELS=$(MODELS_DIR) PYTHONPATH=.:backend $(VENV)/bin/python scripts/test_inference.py
 
 train:
 	@if [ ! -f $(NOTEBOOK) ]; then \

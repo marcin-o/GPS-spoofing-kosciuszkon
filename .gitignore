@@ -273,9 +273,10 @@ desktop.ini
 !frontend/lib/**
 
 # --- GNSS Defense Monitor: regenerable artifacts ---
-# ML model files (rebuild with `make ml-train` / `python -m ml.inference --train`).
-# joblib + torch state-dicts; ~2.5 MB total but binary, reproducible from fixed seed.
-/models/
+# NOTE: /models/ is intentionally NOT ignored — see lines 236-240 above.
+# Both the ML-team's real models (xgboost_*.joblib, isoforest_*.joblib,
+# lstm_ae_trajectories_*.pt) and our synthetic stand-ins (texbat_xgb_v1
+# etc.) live there so a fresh clone can boot the demo without re-training.
 
 # Playwright deps + harness output (rebuild with `cd e2e && npm install`).
 /e2e/node_modules/
