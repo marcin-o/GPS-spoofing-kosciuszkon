@@ -16,7 +16,9 @@ interface OnboardMonitorProps {
 }
 
 export function OnboardMonitor({ tick, history, scenarioName }: OnboardMonitorProps) {
-  const [explainOpen, setExplainOpen] = useState(false);
+  // Freeze the tick snapshot at the moment Explain is clicked, so the
+  // modal doesn't re-fetch / flicker every 500 ms as new ticks arrive.
+  const [frozenTick, setFrozenTick] = useState<OnboardTick | null>(null);
   const alertFeedRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -67,8 +69,9 @@ export function OnboardMonitor({ tick, history, scenarioName }: OnboardMonitorPr
           <div className="ml-auto flex items-center gap-3">
             {tick && <VerdictPill verdict={tick.verdict} size="lg" />}
             <button
-              onClick={() => setExplainOpen(true)}
-              className="text-xs uppercase tracking-wider text-slate-300 hover:text-white border border-slate-800 hover:border-slate-600 px-3 py-1.5 rounded-sm transition-colors"
+              onClick={() => tick && setFrozenTick(tick)}
+              disabled={!tick}
+              className="text-xs uppercase tracking-wider text-slate-300 hover:text-white border border-slate-800 hover:border-slate-600 px-3 py-1.5 rounded-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Explain
             </button>
@@ -142,11 +145,10 @@ export function OnboardMonitor({ tick, history, scenarioName }: OnboardMonitorPr
         </div>
       </aside>
 
-      {tick && (
+      {frozenTick && (
         <ExplainModal
-          open={explainOpen}
-          onClose={() => setExplainOpen(false)}
-          tickId={`${tick.scenario_id}-${tick.tick}`}
+          tick={frozenTick}
+          onClose={() => setFrozenTick(null)}
         />
       )}
     </div>

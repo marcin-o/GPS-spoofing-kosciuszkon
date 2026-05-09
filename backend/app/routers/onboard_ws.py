@@ -92,7 +92,10 @@ async def onboard_ws(
         return
 
     tick_idx = 0
-    interval = max(0.05, 0.1 / max(0.1, speed))  # 100 ms default
+    # 500 ms default (2 Hz). Real TEXBAT is 1 Hz — replay 2× wall-clock.
+    # Lower than this just makes scoreboard numbers flicker without adding
+    # information.
+    interval = max(0.1, 0.5 / max(0.1, speed))
     try:
         while True:
             payload = _build_payload(scenario, tick_idx)
