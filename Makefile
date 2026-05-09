@@ -1,4 +1,4 @@
-# GPS Spoofing Sentinel — top-level orchestration.
+# GNSS Defense Monitor — top-level orchestration.
 # Reproducibility lever per PRD §5.4: one clone + `make install` + `make demo`
 # must boot the full stack.
 
@@ -9,18 +9,20 @@ UVICORN := $(VENV)/bin/uvicorn
 PYTEST := $(VENV)/bin/pytest
 JUPYTER := $(VENV)/bin/jupyter
 NOTEBOOK := ml/notebooks/03_model_training.ipynb
+MODELS_DIR := $(PWD)/models
 
-.PHONY: help install install-backend install-frontend dev demo backend frontend train test voice clean
+.PHONY: help install install-backend install-frontend dev demo backend frontend ml-train ml-smoke train test voice clean
 
 help:
 	@echo "Targets:"
 	@echo "  install   — backend venv + pip deps + frontend npm deps"
+	@echo "  ml-train  — train synthetic stand-in models into models/  (~5s)"
+	@echo "  ml-smoke  — run python -m ml.inference --all  (smoke test)"
 	@echo "  dev       — run backend (uvicorn --reload) and frontend (next dev) in parallel"
-	@echo "  demo      — same as dev but with NEXT_PUBLIC_USE_MSW=false (real backend)"
-	@echo "  train     — execute ml/notebooks/03_model_training.ipynb"
-	@echo "  voice     — regenerate voice-backup MP3s (requires piper + ffmpeg)"
+	@echo "  demo      — same as dev (real backend wired through NEXT_PUBLIC_API_BASE)"
 	@echo "  test      — pytest backend/tests"
-	@echo "  clean     — drop venv and frontend node_modules"
+	@echo "  voice     — regenerate voice-backup MP3s (requires piper + ffmpeg)"
+	@echo "  clean     — drop venv, node_modules, models, and screenshots"
 
 install: install-backend install-frontend
 
@@ -43,10 +45,17 @@ demo:
 	NEXT_PUBLIC_USE_MSW=false $(MAKE) -j2 backend frontend
 
 backend:
-	cd backend && ../$(VENV)/bin/uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+	cd backend && GPS_SENTINEL_MODELS=$(MODELS_DIR) PYTHONPATH=.:.. ../$(VENV)/bin/uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
 frontend:
 	cd frontend && npm run dev
+
+# ML
+ml-train:
+	GPS_SENTINEL_MODELS=$(MODELS_DIR) PYTHONPATH=. $(VENV)/bin/python -m ml.inference --train
+
+ml-smoke:
+	GPS_SENTINEL_MODELS=$(MODELS_DIR) PYTHONPATH=. $(VENV)/bin/python -m ml.inference --all
 
 train:
 	@if [ ! -f $(NOTEBOOK) ]; then \
@@ -60,7 +69,7 @@ voice:
 	$(VENV)/bin/python backend/scripts/generate_voice_backup.py
 
 test:
-	cd backend && PYTHONPATH=. ../$(VENV)/bin/pytest tests -q
+	cd backend && GPS_SENTINEL_MODELS=$(MODELS_DIR) PYTHONPATH=.:.. ../$(VENV)/bin/pytest tests -q
 
 clean:
-	rm -rf $(VENV) frontend/node_modules
+	rm -rf $(VENV) frontend/node_modules frontend/.next models e2e/node_modules
