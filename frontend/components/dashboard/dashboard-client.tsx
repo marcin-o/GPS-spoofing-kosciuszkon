@@ -54,8 +54,20 @@ export function DashboardClient() {
   const lastOnboardVerdictRef = useRef<Verdict>("OK");
   const lastGlobeAcVerdictRef = useRef<Map<string, Verdict>>(new Map());
 
+  // EWMA state for smoothing per-tick noise on the displayed ratios.
+  // α=0.3 ⇒ ~3-tick lag, kills 100ms jitter without hiding inject ramps.
+  const ewmaRef = useRef<{ L1: number | null; L2: number | null; lat_ms: number | null }>({
+    L1: null, L2: null, lat_ms: null,
+  });
+  const SMOOTH_ALPHA = 0.3;
+
   function pushAlert(ev: AlertEvent) {
     setAlerts((cur) => [...cur, ev].slice(-32));
+  }
+
+  function ewma(prev: number | null, next: number, alpha = SMOOTH_ALPHA): number {
+    if (prev === null) return next;
+    return prev + alpha * (next - prev);
   }
 
   // Boot: probe backend health.
@@ -96,6 +108,7 @@ export function DashboardClient() {
     verdictsRef.current = [];
     lastOnboardVerdictRef.current = "OK";
     lastGlobeAcVerdictRef.current = new Map();
+    ewmaRef.current = { L1: null, L2: null, lat_ms: null };
 
     if (mockMode) {
       const stop = mode === "onboard"
@@ -164,29 +177,48 @@ export function DashboardClient() {
   }, [mode, scenario, mockMode]);
 
   function receiveOnboardTick(t: OnboardTick) {
-    setOnboardTick(t);
+    // Apply EWMA on ratios + latency before storing. Verdict transitions
+    // remain crisp because verdict comes from the server's threshold check
+    // (not the smoothed ratio); smoothing only affects displayed numbers.
+    const sL1 = ewma(ewmaRef.current.L1, t.scores.L1.ratio);
+    const sL2 = ewma(ewmaRef.current.L2, t.scores.L2.ratio);
+    ewmaRef.current.L1 = sL1;
+    ewmaRef.current.L2 = sL2;
+    const smoothed: OnboardTick = {
+      ...t,
+      scores: {
+        L1: { ...t.scores.L1, ratio: sL1 },
+        L2: { ...t.scores.L2, ratio: sL2 },
+      },
+    };
+
+    setOnboardTick(smoothed);
     setOnboardHistory((h) => {
-      const next = [...h, t];
+      const next = [...h, smoothed];
       return next.length > 200 ? next.slice(-200) : next;
     });
-    verdictsRef.current = [...verdictsRef.current, t.verdict].slice(-200);
-    if (t.inference_ms?.xgboost) setLatency(t.inference_ms.xgboost);
+    verdictsRef.current = [...verdictsRef.current, smoothed.verdict].slice(-200);
+    if (t.inference_ms?.xgboost) {
+      const sLat = ewma(ewmaRef.current.lat_ms, t.inference_ms.xgboost);
+      ewmaRef.current.lat_ms = sLat;
+      setLatency(sLat);
+    }
 
     // Verdict transition alert (OK→WARN, OK→CRIT, WARN→CRIT only).
     const prev = lastOnboardVerdictRef.current;
-    if (verdictRank(t.verdict) > verdictRank(prev)) {
+    if (verdictRank(smoothed.verdict) > verdictRank(prev)) {
       pushAlert({
-        id: `${t.scenario_id}-${t.tick}-${t.verdict}`,
-        ts: t.t,
-        verdict: t.verdict,
+        id: `${smoothed.scenario_id}-${smoothed.tick}-${smoothed.verdict}`,
+        ts: smoothed.t,
+        verdict: smoothed.verdict,
         context: "onboard",
-        callsign: t.callsign,
-        layer: t.dominant_layer,
-        ratio: t.scores[t.dominant_layer].ratio,
-        reason: t.top_reasons[0] ?? "Verdict escalation",
+        callsign: smoothed.callsign,
+        layer: smoothed.dominant_layer,
+        ratio: smoothed.scores[smoothed.dominant_layer].ratio,
+        reason: smoothed.top_reasons[0] ?? "Verdict escalation",
       });
     }
-    lastOnboardVerdictRef.current = t.verdict;
+    lastOnboardVerdictRef.current = smoothed.verdict;
   }
 
   function receiveGlobeTick(t: GlobeTick) {
