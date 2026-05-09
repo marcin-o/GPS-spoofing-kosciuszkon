@@ -1,27 +1,29 @@
-from typing import Optional
+from typing import Literal
 
 from pydantic import BaseModel
 
-
-class TrajectoryPoint(BaseModel):
-    latitude: float
-    longitude: float
-    altitude: Optional[float] = None
-    timestamp: Optional[int] = None
+IncidentType = Literal["aviation", "maritime"]
 
 
-class Incident(BaseModel):
+class IncidentSummary(BaseModel):
     id: str
-    title: Optional[str] = None
-    description: Optional[str] = None
-    severity: Optional[str] = None
-    timestamp: Optional[int] = None
+    title: str
+    date: str
+    type: IncidentType
+    region: str
+    summary: str
 
 
-class IncidentsResponse(BaseModel):
-    incidents: list[Incident] = []
+class ReplayFrame(BaseModel):
+    ts: float
+    lat_real: float
+    lon_real: float
+    lat_reported: float
+    lon_reported: float
+    score: float
 
 
-class IncidentTrajectoryResponse(BaseModel):
-    incident_id: str
-    points: list[TrajectoryPoint] = []
+class IncidentReplay(BaseModel):
+    id: str
+    title: str
+    frames: list[ReplayFrame]

@@ -1,3 +1,26 @@
-{
-  "incidents": []
-}
+[
+  {
+    "id": "flight-8243",
+    "title": "Azerbaijan Airlines Flight 8243",
+    "date": "2024-12-25",
+    "type": "aviation",
+    "region": "Grozny → Aktau",
+    "summary": "E-190 lost GPS reliability in Grozny region under reported jamming/spoofing; diverted across Caspian and crashed near Aktau (38 fatalities)."
+  },
+  {
+    "id": "hormuz-2025",
+    "title": "Strait of Hormuz GPS spoofing surge",
+    "date": "2025-06-15",
+    "type": "maritime",
+    "region": "Bandar Abbas / Persian Gulf",
+    "summary": "Over 1,100 vessels reported in 24h with positions inside Bandar Abbas airport perimeter — classic ship-on-land spoofing pattern."
+  },
+  {
+    "id": "beirut-2024",
+    "title": "Beirut Airport ship-cluster anomaly",
+    "date": "2024-04-10",
+    "type": "maritime",
+    "region": "Beirut, Lebanon",
+    "summary": "117 ships simultaneously reporting GPS position inside Beirut–Rafic Hariri airport — confirmed spoofing per Windward report."
+  }
+]

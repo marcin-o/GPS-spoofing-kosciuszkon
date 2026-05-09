@@ -1,20 +1,19 @@
-from typing import Optional
+from typing import Literal, Optional
 
 from pydantic import BaseModel
 
+AlertLevel = Literal["ok", "warn", "critical"]
 
-class Aircraft(BaseModel):
+
+class Flight(BaseModel):
     icao24: str
     callsign: Optional[str] = None
-    latitude: Optional[float] = None
-    longitude: Optional[float] = None
-    altitude: Optional[float] = None
-    velocity: Optional[float] = None
-    heading: Optional[float] = None
-    timestamp: Optional[int] = None
-
-
-class LiveFlightsResponse(BaseModel):
-    aircraft: list[Aircraft] = []
-    source: str = "mock"
-    cached: bool = False
+    lat: float
+    lon: float
+    alt_m: float
+    vel_kt: float
+    heading: float
+    nic: int
+    spoofing_score: float
+    alert_level: AlertLevel
+    reasons: list[str] = []

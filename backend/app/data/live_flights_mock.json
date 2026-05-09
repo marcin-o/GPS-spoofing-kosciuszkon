@@ -1,5 +1,148 @@
-{
-  "aircraft": [],
-  "source": "mock",
-  "cached": false
-}
+[
+  {
+    "icao24": "424351",
+    "callsign": "AFL2548",
+    "lat": 55.7,
+    "lon": 37.6,
+    "alt_m": 10668,
+    "vel_kt": 432,
+    "heading": 92,
+    "nic": 8,
+    "spoofing_score": 0.05,
+    "alert_level": "ok",
+    "reasons": []
+  },
+  {
+    "icao24": "60c1ec",
+    "callsign": "AZG8243",
+    "lat": 43.34,
+    "lon": 45.7,
+    "alt_m": 8800,
+    "vel_kt": 418,
+    "heading": 65,
+    "nic": 8,
+    "spoofing_score": 0.12,
+    "alert_level": "ok",
+    "reasons": []
+  },
+  {
+    "icao24": "738064",
+    "callsign": "THY1234",
+    "lat": 41.0,
+    "lon": 28.9,
+    "alt_m": 11200,
+    "vel_kt": 460,
+    "heading": 280,
+    "nic": 8,
+    "spoofing_score": 0.18,
+    "alert_level": "ok",
+    "reasons": []
+  },
+  {
+    "icao24": "896412",
+    "callsign": "EK202",
+    "lat": 25.25,
+    "lon": 55.36,
+    "alt_m": 11800,
+    "vel_kt": 478,
+    "heading": 305,
+    "nic": 8,
+    "spoofing_score": 0.34,
+    "alert_level": "ok",
+    "reasons": []
+  },
+  {
+    "icao24": "a0e3fb",
+    "callsign": "UAL900",
+    "lat": 40.6,
+    "lon": -73.8,
+    "alt_m": 9750,
+    "vel_kt": 440,
+    "heading": 78,
+    "nic": 8,
+    "spoofing_score": 0.42,
+    "alert_level": "warn",
+    "reasons": ["mild trajectory smoothness anomaly"]
+  },
+  {
+    "icao24": "4ca5e4",
+    "callsign": "FR1024",
+    "lat": 52.31,
+    "lon": 4.94,
+    "alt_m": 11500,
+    "vel_kt": 448,
+    "heading": 110,
+    "nic": 8,
+    "spoofing_score": 0.61,
+    "alert_level": "warn",
+    "reasons": ["mild trajectory smoothness anomaly"]
+  },
+  {
+    "icao24": "06a0fa",
+    "callsign": "QTR901",
+    "lat": 25.27,
+    "lon": 51.61,
+    "alt_m": 11600,
+    "vel_kt": 462,
+    "heading": 320,
+    "nic": 0,
+    "spoofing_score": 0.74,
+    "alert_level": "critical",
+    "reasons": [
+      "trajectory δ-position spike (>3σ)",
+      "NIC dropped from 8 to 0 in 12s",
+      "velocity inconsistent with reported heading"
+    ]
+  },
+  {
+    "icao24": "4baa12",
+    "callsign": "TK17",
+    "lat": 36.95,
+    "lon": 30.79,
+    "alt_m": 10300,
+    "vel_kt": 405,
+    "heading": 200,
+    "nic": 0,
+    "spoofing_score": 0.83,
+    "alert_level": "critical",
+    "reasons": [
+      "trajectory δ-position spike (>3σ)",
+      "NIC dropped from 8 to 0 in 12s",
+      "velocity inconsistent with reported heading"
+    ]
+  },
+  {
+    "icao24": "489003",
+    "callsign": "SU123",
+    "lat": 55.97,
+    "lon": 37.41,
+    "alt_m": 9100,
+    "vel_kt": 396,
+    "heading": 175,
+    "nic": 0,
+    "spoofing_score": 0.91,
+    "alert_level": "critical",
+    "reasons": [
+      "trajectory δ-position spike (>3σ)",
+      "NIC dropped from 8 to 0 in 12s",
+      "velocity inconsistent with reported heading"
+    ]
+  },
+  {
+    "icao24": "750a01",
+    "callsign": "EY777",
+    "lat": 24.43,
+    "lon": 54.65,
+    "alt_m": 11300,
+    "vel_kt": 470,
+    "heading": 290,
+    "nic": 0,
+    "spoofing_score": 0.96,
+    "alert_level": "critical",
+    "reasons": [
+      "trajectory δ-position spike (>3σ)",
+      "NIC dropped from 8 to 0 in 12s",
+      "velocity inconsistent with reported heading"
+    ]
+  }
+]
