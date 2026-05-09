@@ -1,0 +1,62 @@
+[
+  {
+    "mmsi": "311042000",
+    "name": "EVER GIVEN",
+    "lat": 26.65,
+    "lon": 56.25,
+    "sog": 12.4,
+    "cog": 270,
+    "spoofing_score": 0.18,
+    "alert_level": "ok",
+    "reasons": []
+  },
+  {
+    "mmsi": "636019825",
+    "name": "OOCL TOKYO",
+    "lat": 26.71,
+    "lon": 56.31,
+    "sog": 0.0,
+    "cog": 0,
+    "spoofing_score": 0.86,
+    "alert_level": "critical",
+    "reasons": [
+      "reported position inside Bandar Abbas airport perimeter",
+      "static for >2h while AIS active"
+    ]
+  },
+  {
+    "mmsi": "215211000",
+    "name": "MARAN GAS",
+    "lat": 33.93,
+    "lon": 35.49,
+    "sog": 0.0,
+    "cog": 0,
+    "spoofing_score": 0.92,
+    "alert_level": "critical",
+    "reasons": [
+      "Beirut airport cluster — 117 vessels reporting identical position"
+    ]
+  },
+  {
+    "mmsi": "538008217",
+    "name": "MSC HAMBURG",
+    "lat": 26.52,
+    "lon": 56.02,
+    "sog": 14.7,
+    "cog": 92,
+    "spoofing_score": 0.11,
+    "alert_level": "ok",
+    "reasons": []
+  },
+  {
+    "mmsi": "636017123",
+    "name": "GENESIS RIVER",
+    "lat": 26.6,
+    "lon": 56.18,
+    "sog": 0.0,
+    "cog": 0,
+    "spoofing_score": 0.78,
+    "alert_level": "critical",
+    "reasons": ["GNSS jamming pattern", "static at sea"]
+  }
+]

@@ -1,16 +1,18 @@
-from typing import Optional
+from typing import Literal, Optional
 
 from pydantic import BaseModel
 
 
-class Alert(BaseModel):
+class BboxCenter(BaseModel):
+    lat: float
+    lon: float
+
+
+class AlertEvent(BaseModel):
     id: str
+    type: Literal["aircraft", "ship"]
     aircraft_id: Optional[str] = None
-    type: Optional[str] = None
-    severity: Optional[str] = None
-    message: Optional[str] = None
-    timestamp: Optional[int] = None
-
-
-class AlertsResponse(BaseModel):
-    alerts: list[Alert] = []
+    mmsi: Optional[str] = None
+    score: float
+    ts: float
+    bbox_center: BboxCenter
