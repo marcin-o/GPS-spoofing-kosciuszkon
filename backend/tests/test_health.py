@@ -15,7 +15,7 @@ def test_health_returns_ok_with_model_versions() -> None:
     assert isinstance(body["model_versions"], list) and len(body["model_versions"]) >= 5
     versions = {m["version"] for m in body["model_versions"]}
     assert "texbat-xgb-v1" in versions
-    assert "aissou-xgb-bin-v1" in versions
+    assert "aissou-xgb-binary-v1" in versions
     assert "opensky-iforest-v1" in versions
     assert isinstance(body["inference_latency_ms"], dict)
     assert "texbat" in body["inference_latency_ms"]

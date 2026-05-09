@@ -1,59 +1,42 @@
-"""/ws/globe — fleet-wide replay scored through opensky_ensemble."""
+"""/ws/globe — fleet replay scored through ML-team's OpenSky ensemble.
+
+Pre-scoring strategy: at WS connect we run the ML-team's batch scorers
+(score_opensky, score_opensky_multitime, score_lstm_ae(dynamic)) for
+every tick of the scenario. Per-tick streaming is then a cache lookup.
+"""
 from __future__ import annotations
 
 import asyncio
 import logging
 import time
-from typing import Any
 
 from fastapi import APIRouter, Query, WebSocket, WebSocketDisconnect
 
-from app.services import alert_mapper, ml_service, replay_engine
-from ml.schemas import OPENSKY_FEATURES
+from app.services import alert_mapper, replay_engine
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
-def _score_aircraft(row: dict[str, Any]) -> dict[str, Any]:
-    payload = {f: float(row.get(f"f_{f}", 0.0)) for f in OPENSKY_FEATURES}
-    payload["trajectory"] = replay_engine.trajectory_from_row(row)
-
-    res = ml_service.run("opensky_ensemble", payload)
-    sub = res["sub_scores"]
-    # Clip ratios for display (LSTM-AE on synthetic data can hit huge values).
-    def _cap(r: float, ceiling: float = 4.0) -> float:
-        return min(ceiling, r)
-
+def _build_payload(scenario_id: str, monotonic_tick: int) -> dict:
+    aircraft, eff = replay_engine.globe_tick_batch(scenario_id, monotonic_tick)
+    enriched = []
+    for a in aircraft:
+        sub_dom = a["dominant_submodel"]
+        ratio = a["ensemble_score"]["ratio"]
+        enriched.append({
+            **a,
+            "last_contact": int(time.time() * 1000),
+            "top_reasons": alert_mapper.globe_reasons(sub_dom, ratio, {}),
+        })
     return {
-        "icao24": str(row.get("icao24")),
-        "callsign": str(row.get("callsign")),
-        "origin_country": str(row.get("origin_country")),
-        "position": {
-            "lat": float(row.get("lat", 0.0)),
-            "lon": float(row.get("lon", 0.0)),
-            "alt": float(row.get("alt", 0.0)),
-            "velocity": float(row.get("velocity", 0.0)),
-            "true_track": float(row.get("true_track", 0.0)),
-            "vertical_rate": float(row.get("vertical_rate", 0.0)),
-            "on_ground": int(row.get("on_ground", 0)) == 1,
-        },
-        "ensemble_score": {
-            "ratio": round(_cap(res["ratio"]), 3),
-            "threshold": res["threshold"],
-        },
-        "sub_scores": {
-            "iforest_v1": {"ratio": round(_cap(sub["iforest_v1"]["ratio"]), 3)},
-            "iforest_v2": {"ratio": round(_cap(sub["iforest_v2"]["ratio"]), 3)},
-            "lstm_ae":    {"ratio": round(_cap(sub["lstm_ae"]["ratio"]), 3)},
-        },
-        "dominant_submodel": res["dominant_submodel"],
-        "verdict": alert_mapper.verdict_for(_cap(res["ratio"])),
-        "last_contact": int(time.time() * 1000),
-        "is_anomaly": int(row.get("is_anomaly", 0)) == 1,
-        "top_reasons": alert_mapper.globe_reasons(
-            res["dominant_submodel"], _cap(res["ratio"]), row,
-        ),
+        "t": int(time.time() * 1000),
+        "tick": monotonic_tick,
+        "effective_tick": eff,
+        "context": "live_globe",
+        "scenario_id": scenario_id,
+        "aircraft": enriched,
+        "inference_ms": {"ensemble_per_100ac": 0.0, "total": 0.0},  # pre-scored
     }
 
 
@@ -71,28 +54,22 @@ async def globe_ws(
         await websocket.close()
         return
 
+    # Pre-score whole scenario now (~5-15 s). The first send to the
+    # client is a real batch — keeps the WS contract simple.
+    try:
+        replay_engine.globe_tick_batch(scenario, 0)
+    except Exception as exc:
+        logger.exception("pre-score failed for %s: %s", scenario, exc)
+        await websocket.send_json({"error": f"pre-score failed: {exc}",
+                                   "scenario_id": scenario})
+        await websocket.close()
+        return
+
     tick_idx = 0
-    interval = max(0.2, 1.5 / max(0.1, speed))  # 1.5s default
+    interval = max(0.2, 1.5 / max(0.1, speed))  # 1.5 s default
     try:
         while True:
-            t0 = time.perf_counter()
-            batch = replay_engine.globe_tick_batch(scenario, tick_idx)
-            scored = [_score_aircraft(r) for r in batch]
-            elapsed_ms = round((time.perf_counter() - t0) * 1000, 2)
-            payload = {
-                "t": int(time.time() * 1000),
-                "tick": tick_idx,
-                "context": "live_globe",
-                "scenario_id": scenario,
-                "aircraft": scored,
-                "inference_ms": {
-                    "ensemble_per_100ac": round(
-                        elapsed_ms / max(1, len(scored)) * 100, 2
-                    ),
-                    "total": elapsed_ms,
-                },
-            }
-            await websocket.send_json(payload)
+            await websocket.send_json(_build_payload(scenario, tick_idx))
             tick_idx += 1
             await asyncio.sleep(interval)
     except WebSocketDisconnect:

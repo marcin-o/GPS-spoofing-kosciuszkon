@@ -28,6 +28,18 @@ export function OnboardMonitor({ tick, history, scenarioName }: OnboardMonitorPr
   const l1History = history.map((t) => t.scores.L1.ratio);
   const l2History = history.map((t) => t.scores.L2.ratio);
 
+  // Filter alert feed: keep only non-OK ticks AND OK→non-OK or non-OK→OK
+  // transitions. Avoids flooding with "OK" rows at 100 ms cadence.
+  const alertEvents: OnboardTick[] = [];
+  let lastVerdict: string | null = null;
+  for (const t of history) {
+    const isTransition = lastVerdict !== null && lastVerdict !== t.verdict;
+    if (t.verdict !== "OK" || isTransition) {
+      alertEvents.push(t);
+    }
+    lastVerdict = t.verdict;
+  }
+
   return (
     <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-4 p-4 flex-1 min-h-0 overflow-hidden">
       <div className="flex flex-col gap-4 min-h-0">
@@ -122,10 +134,17 @@ export function OnboardMonitor({ tick, history, scenarioName }: OnboardMonitorPr
           <span className="text-[11px] tracking-wider uppercase text-slate-400 font-medium">
             Alert feed
           </span>
-          <span className="ml-auto font-mono text-[10px] text-slate-500">{history.length} ticks</span>
+          <span className="ml-auto font-mono text-[10px] text-slate-500">
+            {alertEvents.length}/{history.length} events
+          </span>
         </div>
         <div ref={alertFeedRef} className="flex-1 overflow-y-auto px-2 py-2 flex flex-col gap-1.5">
-          {[...history].reverse().slice(0, 80).map((t) => (
+          {alertEvents.length === 0 && (
+            <div className="text-[11px] text-slate-500 italic px-2 py-3 text-center">
+              — sygnał czysty, brak zdarzeń —
+            </div>
+          )}
+          {[...alertEvents].reverse().slice(0, 80).map((t) => (
             <AlertRow key={t.tick} tick={t} />
           ))}
         </div>
