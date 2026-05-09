@@ -28,17 +28,9 @@ export function OnboardMonitor({ tick, history, scenarioName }: OnboardMonitorPr
   const l1History = history.map((t) => t.scores.L1.ratio);
   const l2History = history.map((t) => t.scores.L2.ratio);
 
-  // Filter alert feed: keep only non-OK ticks AND OK→non-OK or non-OK→OK
-  // transitions. Avoids flooding with "OK" rows at 100 ms cadence.
-  const alertEvents: OnboardTick[] = [];
-  let lastVerdict: string | null = null;
-  for (const t of history) {
-    const isTransition = lastVerdict !== null && lastVerdict !== t.verdict;
-    if (t.verdict !== "OK" || isTransition) {
-      alertEvents.push(t);
-    }
-    lastVerdict = t.verdict;
-  }
+  // Alert feed = WARNING + CRITICAL only. OK is the default state, not
+  // a logline. Avoids flooding the panel at 100 ms cadence.
+  const alertEvents = history.filter((t) => t.verdict !== "OK");
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-4 p-4 flex-1 min-h-0 overflow-hidden">

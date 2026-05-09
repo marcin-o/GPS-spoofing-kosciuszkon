@@ -69,11 +69,14 @@ export function AlertSystem({ events, soundEnabled, onToggleSound }: AlertSystem
       if (seenRef.current.has(ev.id)) continue;
       seenRef.current.add(ev.id);
 
-      // Toast for WARNING + CRITICAL.
-      setActiveToasts((cur) => [...cur, ev].slice(-4));
-      setTimeout(() => {
-        setActiveToasts((cur) => cur.filter((t) => t.id !== ev.id));
-      }, TOAST_DURATION_MS);
+      // Toasts only for CRITICAL — WARNING stays in the alert feed,
+      // doesn't pop. OK is never an event.
+      if (ev.verdict === "CRITICAL") {
+        setActiveToasts((cur) => [...cur, ev].slice(-4));
+        setTimeout(() => {
+          setActiveToasts((cur) => cur.filter((t) => t.id !== ev.id));
+        }, TOAST_DURATION_MS);
+      }
 
       if (ev.verdict === "CRITICAL") {
         setBannerEvent(ev);
