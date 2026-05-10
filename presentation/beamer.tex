@@ -1,0 +1,553 @@
+\documentclass[10pt,aspectratio=169]{beamer}
+
+\usetheme{metropolis}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[polish]{babel}
+\usepackage{appendixnumberbeamer}
+\usepackage{booktabs}
+\usepackage{tikz}
+\usetikzlibrary{shapes.geometric, arrows.meta, positioning, fit, backgrounds, calc}
+\usepackage{xcolor}
+\usepackage{colortbl}
+\usepackage{graphicx}
+\usepackage{tabularx}
+\usepackage{calc}
+\usepackage{multirow}
+
+% --- Custom palette (Honeywell-inspired blue + safety red) ---
+\definecolor{primary}{HTML}{2B4F7C}
+\definecolor{primaryLight}{HTML}{4080B0}
+\definecolor{primaryDark}{HTML}{1A3556}
+\definecolor{accent}{HTML}{D04444}
+\definecolor{accentDark}{HTML}{A52828}
+\definecolor{ok}{HTML}{2E8B57}
+\definecolor{warn}{HTML}{D08020}
+\definecolor{bgLight}{HTML}{F4F7FA}
+\definecolor{bgGrid}{HTML}{E8EEF5}
+\definecolor{cellGood}{HTML}{C8E6C9}
+\definecolor{cellMid}{HTML}{FFF59D}
+\definecolor{cellBad}{HTML}{FFCDD2}
+
+\setbeamercolor{normal text}{fg=black, bg=white}
+\setbeamercolor{alerted text}{fg=accent}
+\setbeamercolor{example text}{fg=ok}
+\setbeamercolor{progress bar}{fg=accent, bg=bgGrid}
+\setbeamercolor{title separator}{fg=accent}
+\setbeamercolor{frametitle}{bg=primary, fg=white}
+\setbeamercolor{block title}{bg=primary, fg=white}
+\setbeamercolor{block body}{bg=bgLight, fg=black}
+\setbeamercolor{block title alerted}{bg=accent, fg=white}
+\setbeamercolor{block body alerted}{bg=bgLight, fg=black}
+\setbeamercolor{block title example}{bg=ok, fg=white}
+\setbeamercolor{block body example}{bg=bgLight, fg=black}
+
+% Footline with criterion tracking
+\setbeamertemplate{footline}{%
+    \leavevmode%
+    \hbox{%
+        \begin{beamercolorbox}[wd=\paperwidth, ht=2.25ex, dp=1ex, leftskip=0.3cm, rightskip=0.3cm]{author in head/foot}%
+            \scriptsize\color{black!60}\textbf{beDetector} \,·\, Team beAuth \,·\, Honeywell Kościuszkon 2026 \hfill \insertframenumber{} / \inserttotalframenumber%
+        \end{beamercolorbox}%
+    }%
+}
+
+% --- TikZ styles ---
+\tikzset{
+    layer/.style={
+        rectangle, rounded corners=2pt,
+        draw=primary, thick, fill=bgLight,
+        minimum height=1.0cm, minimum width=2.6cm,
+        align=center, font=\scriptsize
+    },
+    supervisor/.style={
+        layer, draw=accent, fill=accent!8
+    },
+    unsup/.style={
+        layer, draw=primaryLight, fill=primaryLight!8
+    },
+    pipenode/.style={
+        rectangle, rounded corners=3pt,
+        draw=primary, thick, fill=bgLight,
+        minimum height=0.9cm, minimum width=2.2cm,
+        align=center, font=\scriptsize
+    },
+    flow/.style={-{Stealth[length=2mm]}, thick, primary},
+    flowAccent/.style={-{Stealth[length=2mm]}, very thick, accent}
+}
+
+% --- Helper macros ---
+\newcommand{\stat}[2]{{\color{accent}\bfseries #1} #2}
+\newcommand{\bigmetric}[2]{%
+    \fcolorbox{primary!30}{bgLight}{%
+        \begin{minipage}[c][2.4cm][c]{4.0cm}\centering
+            {\LARGE\bfseries\color{accent} #1}\\[6pt]
+            {\footnotesize\color{black!70} #2}
+        \end{minipage}%
+    }%
+}
+\newcommand{\headlinebox}[3][26]{%
+    \fcolorbox{accent}{white}{%
+        \begin{minipage}[c][2.4cm][c]{0.30\textwidth}\centering
+            {\fontsize{#1}{#1}\selectfont\bfseries\color{accent} #2}\\[6pt]
+            {\footnotesize #3}
+        \end{minipage}%
+    }%
+}
+\newcommand{\hi}[1]{\cellcolor{cellGood}\textbf{#1}}
+\newcommand{\md}[1]{\cellcolor{cellMid}#1}
+\newcommand{\lo}[1]{\cellcolor{cellBad}#1}
+\newcommand{\dash}{\cellcolor{black!5}--}
+\newcommand{\criterion}[1]{{\tiny\color{primaryLight}\textbf{[Kryterium #1]}}}
+
+\title{beDetector — wykrywanie GPS spoofingu z wykorzystaniem Machine Learning}
+\subtitle{Defense in depth — 5 modeli, 3 domeny, walidacja na rzeczywistych danych}
+\author{Team beAuth}
+\date{Honeywell Kościuszkon 2026 \,·\, ścieżka GPS Spoofing Detection}
+\institute{}
+
+\begin{document}
+
+% =========================================================
+% SLIDE 1 — Title
+% =========================================================
+\maketitle
+
+% =========================================================
+% SLIDE 2 — Problem (Criterion 1)
+% =========================================================
+\begin{frame}{Problem — GPS spoofing wszedł do mainstreamu}
+    \criterion{1: Problem Understanding}
+    \vspace{0.2cm}
+    \begin{columns}[T,onlytextwidth]
+    \column{0.55\textwidth}
+        \begin{itemize}\setlength\itemsep{0.3em}
+            \item \stat{1\,500+}{lotów dziennie zakłóconych globalnie (2024)}
+            \item \stat{1\,100+}{statków przekierowanych w Cieśninie Ormuz w 24\,h (czerwiec 2025)}
+            \item \stat{Lot 8243}{(grudzień 2024): 38 ofiar; w raportach pojawiło się zakłócenie GPS}
+            \item \stat{\$300}{SDR powiela cywilny GPS — specyfikacja publiczna}
+        \end{itemize}
+
+        \vspace{0.5em}
+        \begin{block}{Definicja}
+            \footnotesize GPS spoofing = transmisja fałszywych sygnałów GNSS, identycznych protokołem ale mocniejszych niż autentyczne. Ofiara liczy pozycję na bazie spreparowanych pseudoranges.
+        \end{block}
+    \column{0.45\textwidth}
+        \begin{block}{Realistyczne scenariusze (ataki)}
+            \footnotesize
+            \begin{tabular}{@{}ll@{}}
+                \toprule
+                Atak & Domena \\
+                \midrule
+                Power-matched stealth & receiver (TEXBAT) \\
+                Carrier-phase rotation & receiver (TEXBAT) \\
+                Code-drift / time push & receiver (TEXBAT) \\
+                Per-channel spoof & UAV (Aissou) \\
+                Teleport (skok lat/lon) & aviation (ADS-B) \\
+                Slow drift & aviation (ADS-B) \\
+                Frozen position & aviation (ADS-B) \\
+                Implausible velocity & aviation (ADS-B) \\
+                \bottomrule
+            \end{tabular}
+        \end{block}
+
+        \vspace{0.4em}
+        \begin{alertblock}{Luka w obronie}
+            \scriptsize CRPA, INS, OSNMA — każde wymaga \textbf{lat} do wdrożenia. Potrzebujemy obrony software'owej \textbf{na istniejącym sprzęcie, dziś}.
+        \end{alertblock}
+    \end{columns}
+\end{frame}
+
+% =========================================================
+% SLIDE 3 — Datasets & EDA (Criterion 2)
+% =========================================================
+\begin{frame}{Datasety \& EDA — 3 źródła, ~196k samples}
+    \criterion{2: Dataset Selection \& Validation}
+    \vspace{0.1cm}
+    \scriptsize
+    \begin{tabular}{@{}l r l p{3.4cm} p{3.0cm}@{}}
+        \toprule
+        \textbf{Dataset} & \textbf{Samples} & \textbf{Class dist.} & \textbf{Coverage} & \textbf{Quality} \\
+        \midrule
+        \textbf{TEXBAT} (UT Austin)
+            & 1\,836
+            & 64\% spoof / 36\% clean
+            & 4 scenariusze; 4 fazy ataku injection/stealth/drift/walk
+            & Real I/Q, ground-truth per epoch \\
+        \addlinespace
+        \textbf{Aissou} (UAV)
+            & 158\,000
+            & binary 50/50; 4-class
+            & 4 kanały GNSS × 12 metryk
+            & Brak NaN; caveat stratify-by-mission \\
+        \addlinespace
+        \textbf{OpenSky live}
+            & 37\,000+
+            & clean + synth injection
+            & Europa, 27+ snapshotów co 2 min, 1986 aircraft
+            & Real-world; synth attacks (real traces N/A) \\
+        \bottomrule
+    \end{tabular}
+
+    \vspace{0.35cm}
+    \begin{columns}[T,onlytextwidth]
+    \column{0.55\textwidth}
+        \centering
+        \includegraphics[width=\linewidth]{img/texbat_clean_vs_ds7_aggregates.png}\\[0.1em]
+        {\scriptsize\color{black!60} TEXBAT EDA: cleanStatic vs ds7 — feature distributions separowalne wizualnie}
+    \column{0.45\textwidth}
+        \vspace{-0.2cm}
+        \begin{exampleblock}{Uzasadnienie wyboru}
+            \scriptsize
+            \begin{itemize}\setlength\itemsep{0.1em}
+                \item \textbf{TEXBAT} — academic gold standard (Wesson 2018, Phelts)
+                \item \textbf{Aissou} — published UAV baseline 99.93\%
+                \item \textbf{OpenSky} — jedyne realnie dostępne live ADS-B
+            \end{itemize}
+        \end{exampleblock}
+        \begin{block}{Quality checks}
+            \scriptsize NaN handling per pipeline; z-score baseline (t<100s) per-scenario na hardware drift; sanity histograms w nb 01-07.
+        \end{block}
+    \end{columns}
+\end{frame}
+
+% =========================================================
+% SLIDE 4 — Feature Engineering (Criterion 3)
+% =========================================================
+\begin{frame}{Feature Engineering — 4 rodziny features}
+    \criterion{3: Feature Engineering / Understanding}
+    \vspace{0.15cm}
+    \begin{columns}[T,onlytextwidth]
+    \column{0.55\textwidth}
+        \footnotesize
+        \begin{enumerate}\setlength\itemsep{0.35em}
+            \item \textbf{Multi-correlator SQM} — 41 I + 41 Q taps autocorrelation function. Łapie carrier phase distortion. \textit{Klasyka literatury (Wesson, Phelts).}
+            \begin{itemize}
+                \item \textcolor{accent}{\textbf{`secondary\_peak\_ratio`}} — \textbf{nasz custom feature}: max envelope poza ±5 tapów od peak'u
+            \end{itemize}
+            \item \textbf{Wideband AGC power} (2/4/8 MHz) — spoof transmitter zwiększa total RF power, AGC reaguje sub-dB
+            \item \textbf{NavSol residuals} — clock drift + position drift (walk phase)
+            \item \textbf{Trajectory kinematics} — haversine step distance, velocity-position residuals, heading changes (L3)
+        \end{enumerate}
+
+        \vspace{0.3em}
+        \begin{block}{Custom: Z-score normalization}
+            \scriptsize Per-scenariusz baseline t<100s — adresuje hardware drift między recording sessions. \textbf{Bez tego: F1 spada z 0.984 → 0.17.}
+        \end{block}
+    \column{0.45\textwidth}
+        \centering
+        \includegraphics[width=\linewidth]{../docs/highroi/03_shap_global_l1.png}\\[0.2em]
+        {\scriptsize\color{black!60} L1 SHAP global: top features na ds7 OOD — \texttt{power\_2MHz\_zscore}, \texttt{sqm\_asymmetry}, \texttt{secondary\_peak\_ratio} dominują}
+    \end{columns}
+\end{frame}
+
+% =========================================================
+% SLIDE 5 — Methods + Alternatives (Criteria 4 + 7 partial)
+% =========================================================
+\begin{frame}{Metoda — defense in depth, 5 modeli}
+    \criterion{4: Method Selection} \,·\, \criterion{7: Comparison}
+    \vspace{0.05cm}
+    \centering
+    \begin{tikzpicture}[node distance=0.6cm]
+        % Data sources
+        \node[layer, fill=bgGrid, draw=black!40, minimum width=3.0cm] (texbat)  {\textbf{TEXBAT} \\ I/Q (.mat)};
+        \node[layer, fill=bgGrid, draw=black!40, minimum width=3.0cm, right=0.7cm of texbat] (aissou)  {\textbf{Aissou UAV} \\ tabular (.xlsx)};
+        \node[layer, fill=bgGrid, draw=black!40, minimum width=3.0cm, right=0.7cm of aissou] (opensky) {\textbf{OpenSky} \\ live ADS-B};
+
+        % Models
+        \node[supervisor, below=1.0cm of texbat, minimum width=2.1cm] (l1)   {\textbf{L1 XGBoost} \\ \textcolor{accent}{F1 0.984}};
+        \node[supervisor, right=0.15cm of l1, minimum width=2.1cm] (l2)   {\textbf{L2 XGBoost} \\ \textcolor{accent}{F1 0.976}};
+        \node[unsup, right=0.15cm of l2, minimum width=2.1cm] (l3v1) {\textbf{L3v1 IsoF.} \\ single-snap};
+        \node[unsup, right=0.15cm of l3v1, minimum width=2.1cm] (l3v2) {\textbf{L3v2 IsoF.} \\ multi-time};
+        \node[unsup, right=0.15cm of l3v2, minimum width=2.1cm] (l4)   {\textbf{L4 LSTM-AE} \\ rejected*};
+
+        % Ensemble
+        \node[layer, fill=accent!10, draw=accent, line width=1pt,
+              minimum width=12cm, minimum height=0.85cm,
+              below=0.75cm of l3v1] (ens)
+              {\textbf{Ensemble (no LSTM)} \,·\, OR predictions, max(score / threshold)};
+
+        % Arrows
+        \draw[flow] (texbat.south)  -- (l1.north);
+        \draw[flow] (aissou.south)  -- (l2.north);
+        \draw[flow] (opensky.south) -- (l3v1.north);
+        \draw[flow] (opensky.south) -- (l3v2.north);
+        \draw[flow] (opensky.south) -- (l4.north);
+
+        \draw[flow] (l1.south)   -- (l1.south  |- ens.north);
+        \draw[flow] (l2.south)   -- (l2.south  |- ens.north);
+        \draw[flow] (l3v1.south) -- (l3v1.south |- ens.north);
+        \draw[flow] (l3v2.south) -- (l3v2.south |- ens.north);
+        \draw[flow, dashed, black!40] (l4.south)   -- (l4.south   |- ens.north);
+
+        \node[anchor=west, font=\tiny, fill=white, draw=black!20, inner sep=2pt]
+              at ([yshift=-0.2cm, xshift=-3.5cm]ens.south)
+              {\textcolor{accent}{$\blacksquare$}~supervised \quad
+               \textcolor{primaryLight}{$\blacksquare$}~unsupervised \quad
+               * \textbf{L4 odrzucony} po head-to-head sweep z L3v2};
+    \end{tikzpicture}
+
+    \vspace{0.15cm}
+    \begin{columns}[T,onlytextwidth]
+    \column{0.5\textwidth}
+        \begin{exampleblock}{Rozważone alternatywy}
+            \scriptsize
+            \begin{itemize}\setlength\itemsep{0.05em}
+                \item L1: LSTM (rejected — tabular > sequential per-epoch)
+                \item L2 multi-class \textbf{flopnął} (F1=0.21 → binary)
+                \item L4 LSTM-AE \textbf{rejected} po Fazie 10
+            \end{itemize}
+        \end{exampleblock}
+    \column{0.5\textwidth}
+        \begin{alertblock}{Limitations explicit}
+            \scriptsize
+            \begin{itemize}\setlength\itemsep{0.05em}
+                \item Multi-class Aissou — tabular features niewystarczające
+                \item L3 spoof labels = synthetic injection
+                \item Receiver bias — TEXBAT cały z UT GRID rig
+            \end{itemize}
+        \end{alertblock}
+    \end{columns}
+\end{frame}
+
+% =========================================================
+% SLIDE 6 — Implementation Pipeline (Criterion 5)
+% =========================================================
+\begin{frame}{Implementacja — pipeline end-to-end}
+    \criterion{5: Implementation \& Experimental Setup}
+    \vspace{0.1cm}
+    \centering
+    \begin{tikzpicture}[node distance=0.5cm]
+        \node[pipenode, fill=bgGrid] (raw) {Raw inputs \\ \scriptsize .mat / .xlsx / API};
+        \node[pipenode, right=0.6cm of raw] (feat) {Feature \\ extraction \\ \scriptsize NB 02-07};
+        \node[pipenode, right=0.6cm of feat, fill=accent!10, draw=accent] (mod) {Per-layer \\ models \\ \scriptsize 5 models};
+        \node[pipenode, right=0.6cm of mod] (ens) {Ensemble \\ + unified \\ \scriptsize \texttt{score\_unified()}};
+        \node[pipenode, right=0.6cm of ens, fill=ok!15, draw=ok] (api) {FastAPI \\ + Next.js \\ \scriptsize Mapbox UI};
+
+        \draw[flowAccent] (raw) -- (feat);
+        \draw[flowAccent] (feat) -- (mod);
+        \draw[flowAccent] (mod) -- (ens);
+        \draw[flowAccent] (ens) -- (api);
+    \end{tikzpicture}
+
+    \vspace{0.4cm}
+    \begin{columns}[T,onlytextwidth]
+    \column{0.5\textwidth}
+        \begin{block}{Train/test split (proper, no leakage)}
+            \scriptsize
+            \begin{itemize}\setlength\itemsep{0.15em}
+                \item \textbf{TEXBAT}: train cleanStatic+ds3, test \textbf{ds7 OOD} (nigdy niewidziany scenariusz)
+                \item \textbf{Aissou}: random 80/20 (binary)
+                \item \textbf{OpenSky}: train na 3893 aircraft (combined), eval z synthetic attack injection
+            \end{itemize}
+        \end{block}
+
+        \begin{block}{Hyperparameters}
+            \scriptsize
+            \begin{itemize}\setlength\itemsep{0.05em}
+                \item XGBoost: 200 est, depth=5, lr=0.08, scale\_pos\_weight=1.636
+                \item IsolationForest: n\_est=400, contamination=0.10
+                \item LSTM-AE: hidden=32, latent=16, 100 epoch V100
+            \end{itemize}
+        \end{block}
+    \column{0.5\textwidth}
+        \begin{exampleblock}{Functional: end-to-end working}
+            \scriptsize
+            \begin{itemize}\setlength\itemsep{0.15em}
+                \item Backend FastAPI: 6 modeli załadowane na startup
+                \item \texttt{/api/score/onboard} → \{score, class, SHAP\} w <200ms
+                \item \texttt{/api/health}: \texttt{model\_loaded: true}, latency reported
+                \item \texttt{score\_unified()}: cross-domain fusion w jednym API call
+                \item Frontend Mapbox konsumuje przez REST
+            \end{itemize}
+        \end{exampleblock}
+
+        \begin{block}{Reprodukowalność}
+            \scriptsize Pinned \texttt{requirements.txt}, \texttt{make demo}, README quickstart na fresh clone, \texttt{ml/inference.py} jako jednolity API.
+        \end{block}
+    \end{columns}
+\end{frame}
+
+% =========================================================
+% SLIDE 7 — Results: Headline TEXBAT (Criterion 6)
+% =========================================================
+\begin{frame}{Wynik headline — TEXBAT ds7 OOD}
+    \criterion{6: Evaluation of the Solution}
+    \vspace{0.05cm}
+    \centering
+    {\scriptsize\color{black!60} ds7 = power-matched + carrier-phase-aligned, zaprojektowany przez Humphreys et al.\ by ominąć ich własny receiver GRID}
+
+    \vspace{0.3cm}
+    \makebox[\textwidth][s]{%
+        \headlinebox[34]{20\,/\,20}{wykryte epoki w fazie stealth\\(okno 130--150\,s)}%
+        \hfill
+        \headlinebox[26]{F1=0.984}{pełny test ds7 OOD\\(110 czystych / 358 spoofed)}%
+        \hfill
+        \headlinebox[28]{0\,/\,468}{\textbf{zero false positives}\\na całym test set}%
+    }
+
+    \vspace{0.5cm}
+    \begin{columns}[T,onlytextwidth]
+    \column{0.45\textwidth}
+        \begin{block}{Confusion matrix (ds7 OOD)}
+            \footnotesize
+            \begin{tabular}{@{}lcc@{}}
+                \toprule
+                & pred clean & pred spoof \\
+                \midrule
+                true clean & \cellcolor{cellGood}\textbf{110} & \cellcolor{cellGood}\textbf{0} \\
+                true spoof & \cellcolor{cellBad}11 & \cellcolor{cellGood}\textbf{347} \\
+                \bottomrule
+            \end{tabular}
+            \vspace{0.2em}
+            \scriptsize\\
+            F1 = 0.984 \,·\, P = \textbf{1.000 exactly} \,·\, R = 0.969 \,·\, ROC-AUC = 0.997
+        \end{block}
+
+        \begin{exampleblock}{Per-phase recall}
+            \scriptsize
+            injection \textbf{75\%} \,·\, \textcolor{ok}{\textbf{stealth 100\%}} \,·\, drift 98\% \,·\, walk 100\% \\
+            \textit{Wilson 95\% CI dla 20/20: [83.9\%, 100\%]}
+        \end{exampleblock}
+    \column{0.55\textwidth}
+        \centering
+        \includegraphics[width=\linewidth]{img/texbat_xgb_prob_over_time.png}\\[0.2em]
+        {\scriptsize\color{black!60} Predykcje XGBoost nad ds7 — model "budzi się" dokładnie w t=110s gdy zaczyna się spoof}
+    \end{columns}
+\end{frame}
+
+% =========================================================
+% SLIDE 8 — Comparison: Defense in depth heatmap (Criterion 7)
+% =========================================================
+\begin{frame}{Comparison — defense in depth (per-attack × per-model)}
+    \criterion{7: Comparison of Solutions}
+    \vspace{0.1cm}
+    \centering
+    \includegraphics[width=0.92\textwidth]{../docs/highroi/08_heatmap_v2.png}
+
+    \vspace{0.2cm}
+    \begin{columns}[T,onlytextwidth]
+    \column{0.5\textwidth}
+        \begin{exampleblock}{Co wynika}
+            \scriptsize
+            \begin{itemize}\setlength\itemsep{0.1em}
+                \item L1 + L2 = paper-grade na real attacks (TEXBAT, Aissou)
+                \item L3v2 multi-time \textbf{dominuje} L3v1 (single-snap = noise)
+                \item \textbf{Ensemble (no LSTM)} = production default, pełne pokrycie
+            \end{itemize}
+        \end{exampleblock}
+    \column{0.5\textwidth}
+        \begin{alertblock}{Co odrzuciliśmy}
+            \scriptsize
+            \begin{itemize}\setlength\itemsep{0.1em}
+                \item \textbf{L4 LSTM-AE}: na każdej intensywności ataku gorszy niż L3v2 (Faza 10 attack-intensity sweep)
+                \item L3v1 single-snap: F1=0.789 było zawyżone — per-attack heatmap ujawniła że to noise
+            \end{itemize}
+        \end{alertblock}
+    \end{columns}
+\end{frame}
+
+% =========================================================
+% SLIDE 9 — Interpretation & Limitations (Criterion 8) — KILLER SLIDE
+% =========================================================
+\begin{frame}{Interpretation \& Limitations — uczciwa analiza}
+    \criterion{8: Interpretation of Results}
+    \vspace{0.1cm}
+    \begin{columns}[T,onlytextwidth]
+    \column{0.55\textwidth}
+        \begin{alertblock}{3 zidentyfikowane słabości}
+            \footnotesize
+            \begin{enumerate}\setlength\itemsep{0.3em}
+                \item \textbf{L3v2 calibration problem (zaadresowany)} \\
+                \scriptsize Pierwotny F1=0.74 był zawyżony — FPR=51\% na clean. Po retreningu na 2× datasecie (Faza 11): uczciwa kalibracja FPR=10\%, recall=25\% przy operacyjnym thresholdzie.
+                \item \textbf{Drift attack <1 km/min nieuwykrywalny} \\
+                \scriptsize Z samej pozycji+prędkości — poniżej GPS noise floor. Roadmap: INS fusion, multi-receiver TDOA.
+                \item \textbf{Receiver bias TEXBAT} \\
+                \scriptsize Wszystkie 4 scenariusze z UT GRID rig. Generalizacja na inny hardware untested.
+            \end{enumerate}
+        \end{alertblock}
+
+        \begin{block}{Trade-off przy operacyjnym progu}
+            \scriptsize \textbf{Precision=1.000 (zero FP) > high recall}. FP = lądowanie awaryjne; FN = istniejący monitoring zostaje aktywny.
+        \end{block}
+    \column{0.45\textwidth}
+        \centering
+        \includegraphics[width=\linewidth]{../docs/highroi/13_drift_detector.png}\\[0.05em]
+        {\scriptsize\color{black!60} Drift detector — frozen/teleport/implausible 99-100\%, subtle drift = noise floor}
+
+        \vspace{0.2em}
+        \includegraphics[width=\linewidth]{../docs/highroi/14_data_growth.png}\\[0.05em]
+        {\scriptsize\color{black!60} Continuous monitoring (12 checkpointów / 5\,h, 4× wzrost datasetu) — wszystkie metryki \textbf{flat}: plateau jest architectural, nie data-bound}
+    \end{columns}
+\end{frame}
+
+% =========================================================
+% SLIDE 10 — Demo: Real Flight Replay
+% =========================================================
+\begin{frame}{Demo — real ADS-B replay z dzisiejszego ranka}
+    \vspace{0.05cm}
+    \centering
+    \begin{columns}[T,onlytextwidth]
+    \column{0.6\textwidth}
+        \includegraphics[width=\linewidth]{../docs/highroi/09_realflight_replay.png}
+    \column{0.4\textwidth}
+        \vspace{0.2cm}
+        \begin{exampleblock}{Setup}
+            \scriptsize 5 najdłuższych torów lotniczych nad Europą zebranych przez collector OpenSky API. Drift attack (~555 m/krok) wstrzyknięty od midpointa.
+        \end{exampleblock}
+
+        \vspace{0.2em}
+        \makebox[\linewidth][c]{\bigmetric{4 / 5}{aircraft alarm w pierwszej \\ klatce po starcie spoofingu}}
+
+        \vspace{0.2em}
+        \begin{block}{Latencja}
+            \scriptsize Średnia \textbf{1 snapshot} (~2 min). Worst case: 5 snapshots.
+        \end{block}
+    \end{columns}
+\end{frame}
+
+% =========================================================
+% SLIDE 11 — Conclusion + Reproducibility (Criterion 9)
+% =========================================================
+\begin{frame}{Podsumowanie + Reprodukowalność}
+    \criterion{9: Presentation Quality}
+    \centering
+    \vspace{0.2cm}
+    \begin{tikzpicture}
+        \node[rectangle, rounded corners=4pt, fill=bgLight, draw=primary,
+              inner sep=12pt, text width=0.92\linewidth, align=center, font=\large]
+              {\textbf{Defense in depth across 3 domains} \\[2pt]
+               \footnotesize TEXBAT \textbf{F1=0.984} (P=1.000) \,·\, Aissou \textbf{F1=0.976} \,·\, OpenSky honest calibrated};
+    \end{tikzpicture}
+
+    \vspace{0.4cm}
+    \makebox[\textwidth][s]{%
+        \bigmetric{0\,/\,468}{false positives na TEXBAT ds7 OOD}%
+        \hfill
+        \bigmetric{<\,200\,ms}{end-to-end latency \\ \scriptsize \texttt{/api/score/onboard}}%
+        \hfill
+        \bigmetric{6 w 1}{modeli za jednym API \\ \scriptsize \texttt{score\_unified()}}%
+    }
+
+    \vspace{0.5cm}
+    {\small \emph{Obrona software'owa dla istniejącego sprzętu GNSS. Produkcyjnie gotowa. Reprodukowalna.}}\\[6pt]
+    {\footnotesize\color{black!60}
+        Kod: 7 notebooków + \texttt{ml/inference.py} \,·\, modele na Ares HPC (V100) \\
+        \texttt{docs/journey.md} (~600 linii audyt decyzji) \,·\,
+        \texttt{docs/highroi/} (15 PNG/CSV walidacji)
+    }
+\end{frame}
+
+% =========================================================
+% Final / Thank You
+% =========================================================
+\begin{frame}[standout]
+    \begin{center}
+        {\fontsize{38}{44}\selectfont\bfseries 100\% recall.}\\[0.3em]
+        {\fontsize{38}{44}\selectfont\bfseries 0 false positives.}\\[0.6em]
+        {\Large\color{black!75} TEXBAT ds7 stealth phase. <200\,ms end-to-end.}\\[1.4em]
+        {\Large\color{black!60}\bfseries Pytania?}
+    \end{center}
+\end{frame}
+
+\end{document}

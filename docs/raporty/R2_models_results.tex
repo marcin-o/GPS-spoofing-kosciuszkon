@@ -1,0 +1,90 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[polish]{babel}
+\usepackage[a4paper, margin=2cm]{geometry}
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{xcolor}
+\usepackage{titlesec}
+\usepackage{caption}
+\usepackage{booktabs}
+\usepackage{hyperref}
+
+\definecolor{primary}{HTML}{2B4F7C}
+\definecolor{accent}{HTML}{D04444}
+\definecolor{ok}{HTML}{2E8B57}
+
+\titleformat{\section}{\Large\bfseries\color{primary}}{}{0pt}{}
+
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{0.5em}
+
+\graphicspath{{../highroi/}{../../presentation/img/}}
+
+\hypersetup{colorlinks=true, linkcolor=primary, urlcolor=primary}
+
+\newcommand{\imgpage}[3]{%
+    \begin{figure}[H]
+        \centering
+        \includegraphics[width=\textwidth, height=0.72\textheight, keepaspectratio]{#1}
+    \end{figure}
+    \vspace{-0.5em}
+    {\small\textbf{#2}}\\
+    \small{#3}
+    \clearpage
+}
+
+\title{\vspace{-2cm}\Huge\textbf{\textcolor{primary}{Raport R2 — Modele, Wyniki, Porównanie}}\\[0.3em]
+    \large beDetector \textbf{·} Team beAuth \textbf{·} Honeywell Kościuszkon 2026}
+\author{}
+\date{}
+
+\begin{document}
+\maketitle
+\thispagestyle{empty}
+
+\vspace{-1.5cm}
+
+\section*{Streszczenie}
+
+Defense in depth — \textbf{4 wytrenowane modele w produkcji} (L1 XGBoost na TEXBAT, L2 XGBoost na Aissou, L3v1 + L3v2 IsolationForest na OpenSky), \textbf{1 odrzucony} (L4 LSTM-AE — underperforms L3v2 na każdej intensywności ataku, Faza 10). Headline: \textbf{TEXBAT ds7 OOD F1=0.984, Precision=1.000, Stealth phase 100\% recall}. Aissou binary F1=0.976. L3v2 honest calibration F1@FPR=10\%=0.398 (Faza 11).
+
+\textit{Pokrywa kryteria: 4 (Method Selection), 5 (Implementation), 6 (Evaluation), 7 (Comparison).}
+
+\clearpage
+
+\section*{Pipeline — architektura end-to-end}
+\imgpage{pipeline_diagram.png}{Defense in depth: 5 modeli, 3 datasety, fusion ensemble, FastAPI + Next.js demo}{Single inference API (\texttt{ml/inference.py}), backend FastAPI z lazy loading + heuristic fallback, frontend Next.js 16 + Mapbox. Latency end-to-end < 200ms.}
+
+\section*{Model comparison — 5 modeli, dataset per modelu}
+\imgpage{model_comparison.png}{Porównanie wszystkich modeli z statusem (production / rejected) + dataset}{L1, L2 = paper-grade na real datasets. L3v1 single-snap zachowane jako diagnostyka. L3v2 multi-time = produkcyjny ensemble. \textbf{L4 LSTM-AE = rejected} po attack-intensity sweep.}
+
+\section*{TEXBAT XGBoost — ROC + Precision-Recall na ds7 OOD}
+\imgpage{texbat_xgb_roc_pr.png}{F1=0.984, Precision=1.000 (zero FP na 110 clean), Recall=0.969, ROC-AUC=0.997}{Train: cleanStatic + ds3 (912 samples). Test: ds7 OOD (468 samples) — scenariusz nigdy niewidziany w treningu. 200 estimators, max\_depth=5, scale\_pos\_weight=1.636.}
+
+\section*{TEXBAT — per-phase recall na ds7}
+\imgpage{texbat_per_phase_metrics.png}{Recall per faza ataku: injection 75\% / stealth 100\% / drift 98\% / walk 100\%}{Stealth phase (n=20 epok) = killer test. UT GRID receiver flagged 0/32k stealth epok (0.00\%). Nasz XGBoost: \textbf{20/20 = 100\%} (Wilson 95\% CI [83.9\%, 100\%]). Multi-correlator SQM features wystarczają na ds7 stealth.}
+
+\section*{TEXBAT — predicted probability over time}
+\imgpage{texbat_xgb_prob_over_time.png}{XGBoost output: model "budzi się" dokładnie w t=110s gdy zaczyna się injection}{Operacyjny próg 0.05 (niski — preferujemy recall nad precision dla aviation safety). Probability skacze z $\sim 0$ do $> 0.9$ w ciągu 1-2 sekund od początku ataku. Walidacja że model nie produkuje noise w fazie clean.}
+
+\section*{Aissou — confusion matrix + ROC}
+\imgpage{aissou_confusion_roc.png}{Aissou binary: F1=0.976, P=0.974, R=0.978, ROC-AUC=0.999}{Replikacja published baseline (autorzy datasetu raportują 99.93\%). 80/20 split, 158k samples (89k clean / 69k spoof). Multi-class flopnął (F1=0.21) — switch na binary w produkcji.}
+
+\section*{Defense in depth — heatmap (per-attack × per-model)}
+\imgpage{01_heatmap_attack_x_model.png}{Recall każdego modelu na każdym typie ataku — receiver-side i trajectory-side}{Żaden pojedynczy model nie wygrywa wszystkich ataków. L3v1 łapie frozen + implausible\_velocity, L3v2 dominuje teleport + altitude\_jump + sharp\_turn. Komplementarność = ensemble OR.}
+
+\section*{Defense in depth v2 — heatmap z L4 v2 + Ensemble (no LSTM)}
+\imgpage{08_heatmap_v2.png}{Updated po Fazie 10/11 — L4 v2 LSTM-AE retrenowany na real data, Ensemble bez LSTM jako produkcyjny default}{L4 v2 nadal słabszy niż L3v2 na każdym ataku. Ensemble (no LSTM) = production default — \texttt{score\_opensky\_ensemble(use\_lstm\_ae=False)}.}
+
+\section*{L3v2 vs L4 — attack intensity sweep}
+\imgpage{07_attack_intensity_sweep.png}{Head-to-head dla 6 typów ataków przy rosnącej intensywności}{Przy każdej intensywności L3v2 IsolationForest dominuje L4 LSTM-AE. Dla L4 osiągnięcie high recall wymaga FPR=19\% (1 alert na 5 to false alarm) — nieakceptowalne dla aviation. Decyzja: L4 OUT z produkcyjnego ensemble.}
+
+\section*{L4 LSTM-AE retrain comparison (synthetic v1 vs real-trained v2)}
+\imgpage{06_l4_retrain_comparison.png}{v1 trained on synthetic data vs v2 retrained on real OpenSky}{v1 F1=0.935 było zawyżone — synthetic train+test były coherent. Na real distribution v1 alarmuje wszystko (FPR=100\%). v2 retrenowany na V100 ujawnił prawdziwą jakość — i tak gorzej niż L3v2.}
+
+\section*{TEXBAT XGBoost — SHAP per-phase importance}
+\imgpage{texbat_xgb_shap_per_phase.png}{Per-faza atak: które features napędzają decyzję modelu w każdej fazie}{Stealth: \texttt{power\_2MHz\_zscore} + \texttt{sqm\_asymmetry}. Drift: \texttt{clock\_error\_drift} + \texttt{secondary\_peak\_ratio}. Walk: \texttt{clock\_offset} + \texttt{navsol\_position\_drift}. Każda faza ma inny "fingerprint" feature.}
+
+\end{document}

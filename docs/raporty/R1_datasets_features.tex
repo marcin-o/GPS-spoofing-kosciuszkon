@@ -1,0 +1,98 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[polish]{babel}
+\usepackage[a4paper, margin=2cm]{geometry}
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{xcolor}
+\usepackage{titlesec}
+\usepackage{caption}
+\usepackage{booktabs}
+\usepackage{hyperref}
+
+\definecolor{primary}{HTML}{2B4F7C}
+\definecolor{accent}{HTML}{D04444}
+
+\titleformat{\section}{\Large\bfseries\color{primary}}{}{0pt}{}
+\titleformat{\subsection}{\large\bfseries\color{primary}}{}{0pt}{}
+
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{0.5em}
+
+\graphicspath{{../highroi/}{../../presentation/img/}}
+
+\hypersetup{
+    colorlinks=true,
+    linkcolor=primary,
+    urlcolor=primary,
+}
+
+% Helper macro: full-width image with caption + interpretation block
+\newcommand{\imgpage}[3]{%
+    \begin{figure}[H]
+        \centering
+        \includegraphics[width=\textwidth, height=0.72\textheight, keepaspectratio]{#1}
+    \end{figure}
+    \vspace{-0.5em}
+    {\small\textbf{#2}}\\
+    \small{#3}
+    \clearpage
+}
+
+\title{\vspace{-2cm}\Huge\textbf{\textcolor{primary}{Raport R1 — Datasety, EDA, Feature Engineering}}\\[0.3em]
+    \large beDetector \textbf{·} Team beAuth \textbf{·} Honeywell Kościuszkon 2026}
+\author{}
+\date{}
+
+\begin{document}
+\maketitle
+\thispagestyle{empty}
+
+\vspace{-1.5cm}
+
+\section*{Streszczenie}
+
+Trzy datasety, łącznie \textbf{\textasciitilde196k samples}. TEXBAT (UT Austin) — gold standard akademicki dla L1 receiver-side. Aissou — published UAV dataset z baseline 99.93\%. OpenSky live — real-time ADS-B nad Europą. \textbf{4 rodziny features} (multi-correlator SQM, wideband AGC power, NavSol residuals, trajectory kinematics) z 1 customowym (\texttt{secondary\_peak\_ratio}) i kluczową preprocessingiem (z-score baseline t<100s per scenariusz).
+
+\textit{Pokrywa kryteria: 1 (Problem Understanding), 2 (Dataset Selection \& Validation), 3 (Feature Engineering).}
+
+\clearpage
+
+\section*{Datasety — wielkość i charakterystyka}
+\imgpage{dataset_size_summary.png}{TEXBAT 1,836 epok / Aissou 158k wierszy / OpenSky 37k+ rosnąco}{TEXBAT i Aissou to opublikowane datasety z literatury. OpenSky — collector zbierał 24/7 z OpenSky Network REST API. Łącznie \textasciitilde196k samples na 3 domeny.}
+
+\section*{Class distribution}
+\imgpage{class_distribution.png}{Rozkład klas per dataset (clean vs anomalous)}{TEXBAT skewed do spoof (64\%) bo ds7 jest atak-heavy. Aissou zbalansowany 50/50 dla binary task. OpenSky — 100\% real clean ADS-B; spoofing labels generated through synthetic injection (real spoof ADS-B traces unavailable globally).}
+
+\section*{TEXBAT — clean vs ds7 (separowalne wizualnie)}
+\imgpage{texbat_clean_vs_ds7_aggregates.png}{Aggregate features: cleanStatic vs ds7 — wyraźnie różne dystrybucje}{Pre-EDA sanity: feature distributions w cleanStatic vs ds7 są separowalne wizualnie. Particularly: \texttt{power\_*MHz\_zscore} skacze przy injection, \texttt{sqm\_secondary\_peak\_ratio} łapie code-drift, \texttt{clock\_error\_drift} eksploduje w fazie walk.}
+
+\section*{TEXBAT ds7 — fazy ataku w czasie}
+\imgpage{texbat_ds7_cn0_phases.png}{C/N0 over time z zaznaczonymi 4 fazami: injection / stealth / drift / walk}{Stealth phase (130--150s) — 20 sekund w którym C/N0 i pseudorange wyglądają identycznie jak clean — tylko carrier phase rotated o $\pi$. UT GRID receiver flagged 0/32k epok (0.00\%) w stealth. To jest "killer test" dla L1 modelu.}
+
+\section*{TEXBAT — feature histograms}
+\imgpage{texbat_feature_histograms.png}{Distributions kluczowych features}{Multi-correlator SQM features z autocorrelation function (41 I + 41 Q taps). Klasyka literatury (Wesson 2018, Phelts, Akos). Dodaliśmy custom \texttt{secondary\_peak\_ratio} — max envelope poza $\pm 5$ tapów od peak'u, rozróżnia stealth od drift.}
+
+\section*{TEXBAT — z-score per-scenariusz baseline normalization}
+\imgpage{texbat_zscore_heatmap.png}{Per-scenariusz z-score na baseline t<100s (clean phase)}{\textbf{Nasz custom design}: bez tej normalizacji F1 spada z 0.984 do 0.17. Adresuje hardware drift między recording sessions — surowe values powerów różnią się między scenariuszami nawet w fazie clean.}
+
+\section*{TEXBAT — IQ taps envelope}
+\imgpage{texbat_iqtaps_envelope.png}{41 I + 41 Q correlator taps wokół peak'u Promptu}{Pełen scan funkcji autokorelacji. Stealth attack rotuje carrier phase $\pi$ — komponenty I/Q flipują, ale peak amplitude pozostaje bez zmian. SQM features mierzą asymetrię/kształt envelope, nie samą amplitudę — i to pozwala wykryć stealth.}
+
+\section*{TEXBAT — wideband AGC power across 2/4/8 MHz}
+\imgpage{texbat_wideband_power.png}{Wideband Automatic Gain Control reaguje sub-dB na obecność spoof transmittera}{Spoofer wstrzykuje dodatkowy sygnał — AGC w receiverze zmniejsza gain żeby skompensować, dokumentowane jako sub-dB anomaly w paśmie 2/4/8 MHz. Najsilniejsze w paśmie 2 MHz (gdzie sygnał GPS L1 dominuje).}
+
+\section*{TEXBAT — clock error drift (NavSol)}
+\imgpage{texbat_navsol_clock_error.png}{Clock error drift — feature dla fazy walk}{Walk phase (400--468s): clock offset rośnie do $\sim$1.27 µs, position offset $\sim$382 m. Ten sygnał jest trywialny do wykrycia (każdy receiver to widzi), ale stealth phase już nie. Multi-feature ML łapie wszystkie 4 fazy.}
+
+\section*{OpenSky — EDA na collected ADS-B}
+\imgpage{opensky_eda.png}{Snapshots z OpenSky API — coverage Europy}{Collector zbierał 24/7. Final dataset: 75k rows, 2341 unikatowych aircraft, 74 snapshotów co \textasciitilde 2 min. Coverage: lat 35--66, lon $-10$ do +40. Used dla L3 trajectory model evaluation + live demo replay engine.}
+
+\section*{SHAP — global feature importance L1 (TEXBAT)}
+\imgpage{03_shap_global_l1.png}{Top features na ds7 OOD wg mean$|$SHAP value$|$}{\texttt{power\_2MHz\_zscore} dominuje — wideband power anomaly to najsilniejszy sygnał. Drugie miejsce \texttt{sqm\_asymmetry}, trzecie \texttt{secondary\_peak\_ratio} (nasz custom feature). Walidacja że feature engineering wybrał właściwe sygnały.}
+
+\section*{SHAP — global feature importance L2 (Aissou)}
+\imgpage{03_shap_global_l2.png}{Top features per-channel Doppler dla L2}{Carrier\_Doppler na konkretnych kanałach (ch3, ch5) dominuje — model rozpoznaje channel-level spoofing po unormalnej Doppler shift. Spójne z mechanizmem ataku w datasecie Aissou (per-channel injection).}
+
+\end{document}

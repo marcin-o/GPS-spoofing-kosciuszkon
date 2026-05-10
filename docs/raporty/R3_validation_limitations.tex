@@ -1,0 +1,95 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[polish]{babel}
+\usepackage[a4paper, margin=2cm]{geometry}
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{xcolor}
+\usepackage{titlesec}
+\usepackage{caption}
+\usepackage{booktabs}
+\usepackage{hyperref}
+
+\definecolor{primary}{HTML}{2B4F7C}
+\definecolor{accent}{HTML}{D04444}
+\definecolor{ok}{HTML}{2E8B57}
+
+\titleformat{\section}{\Large\bfseries\color{primary}}{}{0pt}{}
+
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{0.5em}
+
+\graphicspath{{../highroi/}{../../presentation/img/}}
+
+\hypersetup{colorlinks=true, linkcolor=primary, urlcolor=primary}
+
+\newcommand{\imgpage}[3]{%
+    \begin{figure}[H]
+        \centering
+        \includegraphics[width=\textwidth, height=0.72\textheight, keepaspectratio]{#1}
+    \end{figure}
+    \vspace{-0.5em}
+    {\small\textbf{#2}}\\
+    \small{#3}
+    \clearpage
+}
+
+\title{\vspace{-2cm}\Huge\textbf{\textcolor{primary}{Raport R3 — Walidacja, Honest Analysis, Limitacje}}\\[0.3em]
+    \large beDetector \textbf{·} Team beAuth \textbf{·} Honeywell Kościuszkon 2026}
+\author{}
+\date{}
+
+\begin{document}
+\maketitle
+\thispagestyle{empty}
+
+\vspace{-1.5cm}
+
+\section*{Streszczenie}
+
+Faza 9-11: zidentyfikowaliśmy i \textbf{zaadresowaliśmy 3 słabości produkcyjne}. (1) L3v2 v2 miało zawyżone F1=0.74 — faktyczny FPR=51\% na clean. Po retreningu na 2$\times$ datasecie: uczciwa kalibracja FPR=10\%, F1=0.398. (2) Drift attack <1\,km/min poniżej GPS noise floor — niewykrywalny z samej pozycji+prędkości. (3) Continuous monitoring po 5\,h pokazał plateau metryki — problem architektural, nie data-bound.
+
+Demo: real ADS-B replay z 2026-05-09 — \textbf{4/5 aircraft alarm w pierwszej klatce} po starcie spoofingu (latencja $\sim$1 snapshot).
+
+\textit{Pokrywa kryteria: 6 (Evaluation), 8 (Interpretation), 9 (Reproducibility).}
+
+\clearpage
+
+\section*{Threshold sweep — L1 (TEXBAT)}
+\imgpage{02_threshold_sweep.png}{F1 / Precision / Recall / FPR vs threshold dla XGBoost L1}{Operacyjny threshold 0.05 zapewnia $\sim$F1=0.984 z Precision=1.000. Optimal F1=0.985 przy threshold=0.0074 — czyli model jest dobrze separowany w niskich thresholdach. Aviation safety: niski próg = preferujemy recall nad FPR.}
+
+\section*{L1 — threshold tuning per phase}
+\imgpage{texbat_threshold_tuning.png}{Wpływ thresholdu na recall każdej fazy ds7}{Stealth phase: 100\% recall stabilny dla thr$\leq$0.7. Injection: bardziej wrażliwy — recall spada poniżej 0.5 przy thr=0.5. Decyzja: operating threshold 0.05 maximalizuje recall stealth + injection.}
+
+\section*{Calibration — L1 + L2 reliability diagram}
+\imgpage{05_calibration_l1l2.png}{Czy score=X faktycznie znaczy P(spoof)=X? Reliability curve}{L1 dobrze skalibrowany w predykcjach >0.5. L2 multi-class: model jest \textbf{overconfident} — predykcja 1.0 nie zawsze = 100\% pewności. Adresowane przez per-scenario p99 calibration na clean baseline (\texttt{l2\_threshold\_calibrated}).}
+
+\section*{L3v2 v3 honest threshold sweep (Faza 11)}
+\imgpage{11_l3v3_threshold_sweep.png}{Przy FPR=10\%: precision=0.79, recall=0.25 (operational). Przy FPR=75\%: F1=0.78}{\textbf{Krytyczne odkrycie Faza 11}: v2 IsoForest miał zawyżone F1=0.74 bo testowane na własnym training distribution z FPR=51\%. v3 trenowany na 2× datasecie ujawnił uczciwą jakość. Operating point chosen for aviation: FPR=10\%, operational F1=0.398.}
+
+\section*{Real Flight 8243-style replay}
+\imgpage{04_realflight_replay.png}{Reconstruction Flight 8243 spoofing scenario na live OpenSky data}{Test detekcji 30km drift attack na real ADS-B. L3v2 score 0.51 > threshold 0.5. 100km teleport — score 0.71 (CRITICAL). Walidacja że L3 multi-time wykrywa real-world Flight 8243-style drift.}
+
+\section*{Real flight replay z 2026-05-09 — 5 longest tracks}
+\imgpage{09_realflight_replay.png}{Drift attack na 5 prawdziwych torów lotniczych nad Europą — alert per-snapshot}{\textbf{4/5 aircraft alarm w pierwszej klatce po starcie spoofingu} (latencja=0). 1 aircraft (01022b) latencja 5 snapshotów ($\sim$10 min). Real-time demo na świeżych ADS-B z dzisiejszego ranka.}
+
+\section*{Drift detector — kinematic residual filter}
+\imgpage{13_drift_detector.png}{Lekka heurystyka: position prediction vs reported velocity}{Frozen / teleport / implausible\_velocity: 99-100\% recall przy 5km threshold. \textbf{Subtle drift (<1km/min) = niewykrywalny} — poniżej naturalnego GPS noise floor + ADS-B reporting jitter. Honest limitation, dokumentowane w roadmapie.}
+
+\section*{Continuous validation — quality vs data growth}
+\imgpage{14_data_growth.png}{Co 30 min retrening L3v2 na rosnącym datasecie. 4× wzrost danych przez 5h.}{\textbf{Plateau jest architectural}, nie data-bound. ROC-AUC flat $\sim 0.70$ niezależnie od wielkości datasetu. Per-attack recall stabilny. Wniosek: więcej ADS-B nie pomoże; potrzebujemy innych sensorów (INS fusion, multi-receiver TDOA).}
+
+\section*{Cross-domain unified score (\texttt{score\_unified()})}
+\imgpage{12_unified_score_demo.png}{6-krokowa eskalacja ataku: subtle drift → carrier distortion → full spoof}{API \texttt{ml/inference.py:score\_unified()} łączy L1 (signal) + L2 (UAV) + L3v2 (trajectory) w jeden per-incident score. Alert level mapping: $\geq 0.7$ critical, $\geq 0.4$ warn, else ok. Spójne z FE thresholdami.}
+
+\section*{TEXBAT — confusion matrix vs UT GRID receiver}
+\imgpage{texbat_xgb_shap_beeswarm.png}{SHAP beeswarm — distribution feature impact w teście ds7}{Każdy punkt = jedna predykcja, kolor = wartość feature, x = SHAP impact. \texttt{power\_2MHz\_zscore} ma najszerszy spread (silnie wpływa na predykcję). Walidacja kierunku features (high power $\rightarrow$ spoof).}
+
+\section*{Aissou — SHAP beeswarm (per-channel features)}
+\imgpage{aissou_shap_beeswarm.png}{Distribution SHAP impact na Aissou binary}{Carrier\_Doppler ch3 i ch5 dominują — model rozpoznaje channel-level spoofing po unormalnej Doppler shift. Spójne z mechanizmem ataku w datasecie Aissou.}
+
+\section*{LSTM-AE training curve + score distribution (rejected)}
+\imgpage{lstm_training_curve.png}{LSTM Autoencoder training na V100 — convergence 100 epoch}{Model uczył się rekonstrukcji trajektorii. Faza 10 attack-intensity sweep ujawniła że na realnej dystrybucji L4 underperforms L3v2 IsolationForest. \textbf{Decyzja: L4 OUT z produkcyjnego ensemble} — kept tylko jako diagnostyka.}
+
+\end{document}
