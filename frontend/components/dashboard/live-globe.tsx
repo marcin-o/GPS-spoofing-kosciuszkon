@@ -5,8 +5,9 @@ import { useMemo, useState } from "react";
 import type { AircraftEntry, GlobeTick } from "@/lib/types";
 import { fmtAge, fmtCoord } from "@/lib/format";
 import { ScoreBar } from "./score-bar";
-import { VerdictPill } from "./verdict-pill";
+import { VerdictPill } from "@/components/shared/verdict-pill";
 import { TopReasons } from "./top-reasons";
+import { useHealth } from "@/lib/use-health";
 
 const GlobeMap = dynamic(() => import("./globe-map"), { ssr: false });
 
@@ -18,6 +19,7 @@ interface LiveGlobeProps {
 
 export function LiveGlobe({ tick, history, scenarioName }: LiveGlobeProps) {
   const [selected, setSelected] = useState<string | null>(null);
+  const { f1 } = useHealth();
 
   const aircraft = tick?.aircraft ?? [];
   const sorted = useMemo(() => {
@@ -70,7 +72,7 @@ export function LiveGlobe({ tick, history, scenarioName }: LiveGlobeProps) {
             ratio={selectedAc?.ensemble_score.ratio ?? 0}
             threshold={selectedAc?.ensemble_score.threshold ?? 1.0}
             modelVersion="opensky-ensemble-v1"
-            f1={0.935}
+            f1={f1.L3}
             history={ratioHistory}
             layer="ENSEMBLE"
           />

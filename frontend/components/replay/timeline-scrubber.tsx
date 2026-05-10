@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { Pause, Play, RotateCcw, SkipBack, SkipForward } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Pause, Play, Plane, RotateCcw, Shield, SkipBack, SkipForward } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { Verdict } from "@/lib/types";
+import type { IncidentAnnotation, Verdict } from "@/lib/types";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface TimelineScrubberProps {
   currentTick: number;
@@ -13,12 +14,20 @@ interface TimelineScrubberProps {
   durationSec: number;
   verdicts: Verdict[];
   attackTick: number | null;
+  annotations?: IncidentAnnotation[];
   onSetTick: (t: number) => void;
   onTogglePlay: () => void;
   onStep: (delta: number) => void;
   onReset: () => void;
   onSpeedChange: (s: number) => void;
 }
+
+const ANNOTATION_ICON = {
+  alert: AlertTriangle,
+  check: CheckCircle2,
+  shield: Shield,
+  plane: Plane,
+} as const;
 
 const VERDICT_COLOR: Record<Verdict, string> = {
   OK: "#34d399",
@@ -36,6 +45,7 @@ export function TimelineScrubber({
   durationSec,
   verdicts,
   attackTick,
+  annotations,
   onSetTick,
   onTogglePlay,
   onStep,
@@ -112,6 +122,41 @@ export function TimelineScrubber({
 
   return (
     <div className="border-b border-slate-800 bg-slate-950/95 px-4 py-2 flex flex-col gap-2 select-none">
+      {/* Annotation row above the heatmap */}
+      {annotations && annotations.length > 0 && (
+        <div className="relative h-5">
+          {annotations.map((a, i) => {
+            const Icon = ANNOTATION_ICON[a.icon ?? "alert"];
+            const left = `${((a.tick / Math.max(1, totalTicks - 1)) * 100).toFixed(2)}%`;
+            const passed = currentTick >= a.tick;
+            return (
+              <Tooltip key={i}>
+                <TooltipTrigger
+                  render={
+                    <button
+                      type="button"
+                      onClick={() => onSetTick(a.tick)}
+                      style={{ left }}
+                      className={cn(
+                        "absolute -translate-x-1/2 top-0 flex items-center justify-center h-5 w-5 rounded-full border transition-all",
+                        passed
+                          ? "border-[#EE3124]/60 bg-[#EE3124]/15 text-[#EE3124]"
+                          : "border-slate-700 bg-slate-900 text-slate-500 hover:border-slate-500",
+                      )}
+                      aria-label={`Annotation: ${a.label}`}
+                    />
+                  }
+                />
+                <TooltipContent>
+                  <span className="font-mono text-[10px] uppercase tracking-wider">T+{a.tick} · {a.label}</span>
+                </TooltipContent>
+                <Icon className="h-3 w-3 pointer-events-none absolute" style={{ left, transform: "translateX(-50%) translateY(2px)" }} />
+              </Tooltip>
+            );
+          })}
+        </div>
+      )}
+
       {/* Heatmap */}
       <div className="relative h-6 rounded-sm overflow-hidden bg-slate-900 cursor-pointer"
         onClick={(e) => {

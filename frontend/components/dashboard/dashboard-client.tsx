@@ -12,6 +12,7 @@ import { ModelFooter } from "./model-footer";
 import { AlertSystem, type AlertEvent } from "./alert-system";
 import type { Verdict } from "@/lib/types";
 import { ReplayView } from "@/components/replay/replay-view";
+import { AnalyticsView } from "@/components/analytics/analytics-view";
 
 const FALLBACK_SCENARIOS: Scenario[] = [
   { id: "normal_waw_gdn", name: "Lot normalny: WAW → GDN", mode: "onboard", duration_s: 20, expected_dominant_layer: null, description: "Czyste odczyty WAW→GDN." },
@@ -50,7 +51,6 @@ export function DashboardClient() {
   const verdictsRef = useRef<string[]>([]);
 
   const [alerts, setAlerts] = useState<AlertEvent[]>([]);
-  const [soundEnabled, setSoundEnabled] = useState(true);
   const lastOnboardVerdictRef = useRef<Verdict>("OK");
   const lastGlobeAcVerdictRef = useRef<Map<string, Verdict>>(new Map());
 
@@ -86,9 +86,9 @@ export function DashboardClient() {
   }, []);
 
   // Pin the scenario to whatever's available for the active mode.
-  // In replay mode all scenarios are valid — no filtering needed.
+  // Replay accepts all scenarios; Analytics doesn't use scenarios.
   useEffect(() => {
-    if (mode === "replay") return;
+    if (mode === "replay" || mode === "analytics") return;
     const filtered = scenarios.filter((s) => s.mode === mode);
     if (filtered.length === 0) return;
     if (!filtered.some((s) => s.id === scenario)) {
@@ -113,7 +113,7 @@ export function DashboardClient() {
     lastGlobeAcVerdictRef.current = new Map();
     ewmaRef.current = { L1: null, L2: null, lat_ms: null };
 
-    if (mode === "replay") return;
+    if (mode === "replay" || mode === "analytics") return;
 
     if (mockMode) {
       const stop = mode === "onboard"
@@ -210,6 +210,7 @@ export function DashboardClient() {
         layer: smoothed.dominant_layer,
         ratio: smoothed.scores[smoothed.dominant_layer].ratio,
         reason: smoothed.top_reasons[0] ?? "Verdict escalation",
+        scenarioId: smoothed.scenario_id,
       });
     }
     lastOnboardVerdictRef.current = smoothed.verdict;
@@ -244,6 +245,7 @@ export function DashboardClient() {
           layer: a.dominant_submodel,
           ratio: a.ensemble_score.ratio,
           reason: a.top_reasons[0] ?? "Ensemble flagged",
+          scenarioId: t.scenario_id,
         });
       }
       lastGlobeAcVerdictRef.current.set(a.icao24, a.verdict);
@@ -302,17 +304,15 @@ export function DashboardClient() {
             scenario={scenario}
             scenarioMeta={scenarioMeta ?? null}
             mockMode={mockMode}
+            onScenarioChange={setScenario}
           />
         )}
+        {mode === "analytics" && <AnalyticsView />}
       </main>
 
       <ModelFooter health={health} mockMode={mockMode} />
 
-      <AlertSystem
-        events={alerts}
-        soundEnabled={soundEnabled}
-        onToggleSound={() => setSoundEnabled((s) => !s)}
-      />
+      <AlertSystem events={alerts} />
     </div>
   );
 }

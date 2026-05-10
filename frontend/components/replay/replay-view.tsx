@@ -1,16 +1,20 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { loadReplay } from "@/lib/replay-feed";
-import type { GlobeTick, OnboardTick, ReplayBundle, Scenario } from "@/lib/types";
+import type { GlobeTick, Incident, OnboardTick, ReplayBundle, Scenario } from "@/lib/types";
 import { TimelineScrubber } from "./timeline-scrubber";
 import { ReplayOnboard } from "./replay-onboard";
 import { ReplayGlobe } from "./replay-globe";
+import { IncidentLibrary } from "./incident-library";
+import { IncidentNarrative } from "./incident-narrative";
+import { findIncidentForScenario, INCIDENT_ANNOTATIONS } from "@/lib/incidents-fallback";
 
 interface ReplayViewProps {
   scenario: string;
   scenarioMeta: Scenario | null;
   mockMode: boolean;
+  onScenarioChange?: (id: string) => void;
 }
 
 const BASE_INTERVAL_MS: Record<"onboard" | "live_globe", number> = {
@@ -18,15 +22,33 @@ const BASE_INTERVAL_MS: Record<"onboard" | "live_globe", number> = {
   live_globe: 1500,
 };
 
-export function ReplayView({ scenario, scenarioMeta, mockMode }: ReplayViewProps) {
+export function ReplayView({ scenario, scenarioMeta, mockMode, onScenarioChange }: ReplayViewProps) {
   const [bundle, setBundle] = useState<ReplayBundle | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [currentTick, setCurrentTick] = useState(0);
   const [playing, setPlaying] = useState(false);
   const [speed, setSpeed] = useState(1);
+  const [activeIncident, setActiveIncident] = useState<Incident | null>(null);
 
   const animRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const incidentForScenario = useMemo(() => findIncidentForScenario(scenario) ?? null, [scenario]);
+  const incident = activeIncident ?? incidentForScenario;
+  const annotations = useMemo(() => {
+    if (!incident) return undefined;
+    return INCIDENT_ANNOTATIONS[incident.id];
+  }, [incident]);
+
+  const handleSelectIncident = useCallback(
+    (next: Incident) => {
+      setActiveIncident(next);
+      if (next.linked_scenario_id && next.linked_scenario_id !== scenario && onScenarioChange) {
+        onScenarioChange(next.linked_scenario_id);
+      }
+    },
+    [scenario, onScenarioChange],
+  );
 
   // Load bundle when scenario changes.
   useEffect(() => {
@@ -161,6 +183,15 @@ export function ReplayView({ scenario, scenarioMeta, mockMode }: ReplayViewProps
 
   return (
     <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
+      <div className="border-b border-slate-800 bg-slate-950/60 px-4 py-1.5 flex items-center gap-2">
+        <span className="text-[10px] uppercase tracking-wider text-slate-500 font-mono">
+          {scenarioMeta?.name ?? scenario}
+        </span>
+        <span className="ml-auto">
+          <IncidentLibrary onSelect={handleSelectIncident} selectedId={incident?.id ?? null} />
+        </span>
+      </div>
+
       <TimelineScrubber
         currentTick={currentTick}
         totalTicks={n}
@@ -169,6 +200,7 @@ export function ReplayView({ scenario, scenarioMeta, mockMode }: ReplayViewProps
         durationSec={durationSec}
         verdicts={verdicts}
         attackTick={attackTick}
+        annotations={annotations}
         onSetTick={handleSetTick}
         onTogglePlay={handleTogglePlay}
         onStep={handleStep}
@@ -176,17 +208,23 @@ export function ReplayView({ scenario, scenarioMeta, mockMode }: ReplayViewProps
         onSpeedChange={setSpeed}
       />
 
-      <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
-        {bundle.mode === "onboard" ? (
-          <ReplayOnboard
-            ticks={bundle.ticks as OnboardTick[]}
-            currentTick={currentTick}
-          />
-        ) : (
-          <ReplayGlobe
-            ticks={bundle.ticks as GlobeTick[]}
-            currentTick={currentTick}
-          />
+      <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-[1fr_320px] overflow-hidden">
+        <div className="min-h-0 overflow-hidden flex flex-col">
+          {bundle.mode === "onboard" ? (
+            <ReplayOnboard ticks={bundle.ticks as OnboardTick[]} currentTick={currentTick} />
+          ) : (
+            <ReplayGlobe ticks={bundle.ticks as GlobeTick[]} currentTick={currentTick} />
+          )}
+        </div>
+        {incident && annotations && (
+          <aside className="border-l border-slate-800 bg-slate-950/40 p-3 overflow-y-auto min-h-0">
+            <IncidentNarrative
+              incident={incident}
+              annotations={annotations}
+              currentTick={currentTick}
+              totalTicks={n}
+            />
+          </aside>
         )}
       </div>
     </div>
