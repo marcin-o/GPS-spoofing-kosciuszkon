@@ -1,4 +1,4 @@
-"""GPS Spoofing Sentinel — unified ML inference API.
+"""BeDetector — unified ML inference API.
 
 Five trained models (defense in depth):
 

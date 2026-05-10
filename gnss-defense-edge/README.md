@@ -1,6 +1,6 @@
 # gnss-defense-edge
 
-Tier-1 on-board console for the GPS Spoofing Sentinel project (Honeywell Kościuszkon 2026). A standalone Rust binary that loads two ONNX-exported XGBoost classifiers (TEXBAT L1 + AISSOU L2) and produces real-time spoofing verdicts via a native egui window.
+Tier-1 on-board console for **BeDetector** (BeAuth). A standalone Rust binary that loads two ONNX-exported XGBoost classifiers (TEXBAT L1 + AISSOU L2) and produces real-time spoofing verdicts via a native egui window.
 
 The companion web dashboard lives in `../frontend/` (Tier 3, fleet/operator view); the FastAPI backend lives in `../backend/` (research / cloud side). See `Native_Edge_App_PRD_v2_for_ClaudeCode.md` for the full spec — this README assumes you've read §0 (production-vs-demo architecture).
 

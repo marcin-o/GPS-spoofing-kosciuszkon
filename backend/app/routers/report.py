@@ -47,7 +47,7 @@ async def get_report(
     mono = ParagraphStyle("mono", parent=body, fontName="Courier", fontSize=9)
 
     story = []
-    story.append(Paragraph("GNSS DEFENSE MONITOR — INCIDENT REPORT", h1))
+    story.append(Paragraph("BEDETECTOR — INCIDENT REPORT", h1))
     story.append(Spacer(1, 8))
     story.append(Paragraph(
         f"Session: <b>{session_id}</b> &nbsp; · &nbsp; "
@@ -116,14 +116,14 @@ async def get_report(
     story.append(Spacer(1, 16))
 
     story.append(Paragraph(
-        "<i>Report compiled by GNSS Defense Monitor for Kościuszkon 2026 / "
-        "Honeywell theme. Models: synthetic stand-ins; pipeline: production-shaped.</i>",
+        "<i>Report compiled by BeDetector (BeAuth). "
+        "Pipeline: ML-team's batch inference cached at WS connect.</i>",
         body,
     ))
 
     doc.build(story)
     buf.seek(0)
-    fname = f"gnss_incident_{session_id}_{int(time.time())}.pdf"
+    fname = f"bedetector_incident_{session_id}_{int(time.time())}.pdf"
     return StreamingResponse(
         buf, media_type="application/pdf",
         headers={"Content-Disposition": f"attachment; filename={fname}"},

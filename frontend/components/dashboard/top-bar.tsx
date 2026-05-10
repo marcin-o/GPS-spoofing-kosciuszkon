@@ -72,9 +72,9 @@ export function TopBar({
         <div className="flex items-center gap-2.5">
           <RadarPulseLogo size={22} />
           <div className="flex flex-col leading-none">
-            <span className="font-semibold tracking-tight text-sm">GNSS DEFENSE MONITOR</span>
+            <span className="font-semibold tracking-tight text-sm">BEDETECTOR</span>
             <span className="font-mono text-[10px] text-slate-500 tracking-wider mt-0.5">
-              KOŚCIUSZKON 2026 · HONEYWELL
+              by BeAuth
             </span>
           </div>
         </div>

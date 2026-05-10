@@ -1,4 +1,4 @@
-# Frontend — GPS Spoofing Sentinel
+# Frontend — BeDetector
 
 Next.js 16 (App Router) + TypeScript + Tailwind v4 + shadcn/ui + Mapbox GL JS v3.
 Single-page dashboard with four routes:

@@ -1,7 +1,7 @@
 export const tokens = {
   colors: {
-    honeywell: "#EE3124",
-    honeywellDark: "#B81C12",
+    accent: "#EE3124",
+    accentDark: "#B81C12",
     bgBase: "rgb(2, 6, 23)",
     bgPanel: "rgb(15, 23, 42)",
     bgPanelHover: "rgb(30, 41, 59)",

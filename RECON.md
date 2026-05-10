@@ -1,4 +1,4 @@
-# RECON — GNSS Defense Monitor
+# RECON — BeDetector
 
 ## What exists
 
@@ -20,13 +20,13 @@
 - `next-themes` wired (dark by default).
 
 ### Docs
-- `GPS_Spoofing_Sentinel_PRD_v2.md` (PRD), `gps-spoofing-detection.md` (criteria), Honeywell topic PDF.
+- `GPS_Spoofing_Sentinel_PRD_v2.md` (PRD), `gps-spoofing-detection.md` (criteria), brand topic PDF.
 
 ## What is broken / incomplete
 
 - **`frontend/lib/` is missing entirely.** Components import `@/lib/utils`, `@/lib/api/types`, `@/lib/api/flights`, `@/lib/api/onboard`, `@/lib/mapbox`, `@/lib/bbox`, `@/lib/api/incidents`, etc. — none exist. The existing frontend will NOT compile. (Previous Claude scaffold left the lib files unwritten.)
 - **No ML models.** No `models/` dir, no `ml/` package, no `inference.py`. Everything currently hits the heuristic fallback.
-- **Backend route shapes don't match the GNSS Defense Monitor spec.** Existing routes serve the v1 PRD (single-aircraft form, MSW-style). New spec calls for `/api/scenarios`, `/ws/onboard`, `/ws/globe`, `/api/inject/{id}`, `/api/explain/{tick_id}`, `/api/report/{session_id}`, plus an extended `/api/health` reporting model versions.
+- **Backend route shapes don't match the BeDetector spec.** Existing routes serve the v1 PRD (single-aircraft form, MSW-style). New spec calls for `/api/scenarios`, `/ws/onboard`, `/ws/globe`, `/api/inject/{id}`, `/api/explain/{tick_id}`, `/api/report/{session_id}`, plus an extended `/api/health` reporting model versions.
 - **No replay engine, no scenario CSVs.** Spec asks for 5 scenarios (normal_waw_gdn, texbat_spoof, aissou_channel_attack, baltic_teleport, smooth_drift_fleet).
 - **No PDF report generator.** `reportlab` is not in requirements.
 - **Mapbox token absent** — globe map will fall back to a "no-token" placeholder unless we use a tile-based map (Leaflet) or a static fallback.
@@ -43,7 +43,7 @@
 
 **Phase 1 — ML.** Create `ml/inference.py` with `score()`. If real models are absent, train tiny synthetic models on the fly into `models/` (XGBoost binary on TEXBAT-shaped features, XGBoost binary on Aissou 80-feature, plus three OpenSky sub-models — IsolationForest×2 and a 1-layer LSTM-AE — combined as OR-fusion ratio-max ensemble). Save with joblib + torch. Smoke test `python -m ml.inference --all` and `scripts/test_inference.py`.
 
-**Phase 2 — Design.** `WebFetch` the design URL, persist tokens to `frontend/design/`. If the fetch fails, fall back to the explicit visual rules in the prompt (slate-950 base, Honeywell `#EE3124`, JetBrains Mono numerics, etc.).
+**Phase 2 — Design.** `WebFetch` the design URL, persist tokens to `frontend/design/`. If the fetch fails, fall back to the explicit visual rules in the prompt (slate-950 base, brand `#EE3124`, JetBrains Mono numerics, etc.).
 
 **Phase 3 — Backend.** Mount new routers on the existing FastAPI app (do not rewrite `main.py` from scratch — extend it). New files:
 - `backend/app/routers/onboard_ws.py`, `globe_ws.py`, `scenarios.py`, `report.py`
@@ -52,7 +52,7 @@
 - `backend/tests/test_*` for the new endpoints
 - Add `reportlab`, `torch (cpu)` to requirements.
 
-**Phase 4 — Frontend.** Reuse existing Next.js shell. Create the missing `frontend/lib/` files. Replace `app/page.tsx` with the GNSS Defense Monitor dashboard. Delete the broken `replay`/`analytics`/`onboard` routes (or stub them). New components under `components/dashboard/` and pages under `app/`.
+**Phase 4 — Frontend.** Reuse existing Next.js shell. Create the missing `frontend/lib/` files. Replace `app/page.tsx` with the BeDetector dashboard. Delete the broken `replay`/`analytics`/`onboard` routes (or stub them). New components under `components/dashboard/` and pages under `app/`.
 
 **Phase 5 — Verification.** Boot both servers, websocat-poke each WS, run Playwright through the demo flow, screenshot all 5 scenarios, generate a real PDF, run pytest + `npm run build`.
 

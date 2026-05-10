@@ -9,9 +9,9 @@ const geist = Geist({ subsets: ["latin"], variable: "--font-sans" });
 const jbMono = JetBrains_Mono({ variable: "--font-mono", subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "GNSS Defense Monitor — Kościuszkon 2026",
+  title: "BeDetector — by BeAuth",
   description:
-    "Real-time GPS spoofing detection across single-aircraft (TEXBAT/Aissou) and fleet (OpenSky) contexts. Honeywell theme.",
+    "Real-time GPS spoofing detection across single-aircraft (TEXBAT/Aissou) and fleet (OpenSky) contexts.",
 };
 
 export default function RootLayout({

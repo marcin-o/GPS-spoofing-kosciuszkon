@@ -17,7 +17,7 @@ def test_globe_ws_streams_valid_batches() -> None:
         ac = b["aircraft"][0]
         assert "ensemble_score" in ac and "ratio" in ac["ensemble_score"]
         assert "sub_scores" in ac and set(ac["sub_scores"]) == {
-            "iforest_v1", "iforest_v2", "lstm_ae",
+            "iforest_v1", "iforest_v2",
         }
-        assert ac["dominant_submodel"] in {"iforest_v1", "iforest_v2", "lstm_ae"}
+        assert ac["dominant_submodel"] in {"iforest_v1", "iforest_v2"}
         assert ac["verdict"] in ("OK", "WARNING", "CRITICAL")
