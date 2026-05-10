@@ -83,13 +83,36 @@ Demo: real ADS-B replay z 2026-05-09 — \textbf{4/5 aircraft alarm w pierwszej 
 \section*{Cross-domain unified score (\texttt{score\_unified()})}
 \imgpage{12_unified_score_demo.png}{6-krokowa eskalacja ataku: subtle drift → carrier distortion → full spoof}{API \texttt{ml/inference.py:score\_unified()} łączy L1 (signal) + L2 (UAV) + L3v2 (trajectory) w jeden per-incident score. Alert level mapping: $\geq 0.7$ critical, $\geq 0.4$ warn, else ok. Spójne z FE thresholdami.}
 
-\section*{TEXBAT — confusion matrix vs UT GRID receiver}
+\section*{TEXBAT — SHAP beeswarm (feature impact distribution)}
 \imgpage{texbat_xgb_shap_beeswarm.png}{SHAP beeswarm — distribution feature impact w teście ds7}{Każdy punkt = jedna predykcja, kolor = wartość feature, x = SHAP impact. \texttt{power\_2MHz\_zscore} ma najszerszy spread (silnie wpływa na predykcję). Walidacja kierunku features (high power $\rightarrow$ spoof).}
 
 \section*{Aissou — SHAP beeswarm (per-channel features)}
 \imgpage{aissou_shap_beeswarm.png}{Distribution SHAP impact na Aissou binary}{Carrier\_Doppler ch3 i ch5 dominują — model rozpoznaje channel-level spoofing po unormalnej Doppler shift. Spójne z mechanizmem ataku w datasecie Aissou.}
 
-\section*{LSTM-AE training curve + score distribution (rejected)}
-\imgpage{lstm_training_curve.png}{LSTM Autoencoder training na V100 — convergence 100 epoch}{Model uczył się rekonstrukcji trajektorii. Faza 10 attack-intensity sweep ujawniła że na realnej dystrybucji L4 underperforms L3v2 IsolationForest. \textbf{Decyzja: L4 OUT z produkcyjnego ensemble} — kept tylko jako diagnostyka.}
+\section*{Live demo — Onboard, baseline OK (zielony verdict)}
+\imgpage{backend_demo_screenshot.png}{Dashboard w trybie Onboard, scenariusz \texttt{normal\_waw\_gdn}}{Layer L1 (TEXBAT) ratio 0.70$\times$, Layer L2 (Aissou) 0.96$\times$ — oba poniżej thresholdu, verdict \textbf{OK} (zielony). Top reasons: anomalie kanału PRN4/PRN6 (informacyjne, sub-threshold). Footer: 5 modeli z F1 score per warstwa.}
+
+\section*{Live demo — Onboard, ostrzeżenie WARNING (pomarańczowy)}
+\imgpage{dashboard_onboard_aissou_alert.png}{Atak kanałowy Aissou: timeline strip pokazuje pomarańczowy tick, alert feed: ``\#017 0.34$\times$ L2 WARNING''}{Pasek ``LAST 30'' pokazuje pojedynczy pomarańczowy tick gdy ratio L2 przekroczyło próg 1.0$\times$. Alert feed po prawej zarejestrował zdarzenie. Verdict wraca do OK, ale tranzycja kolorów jest widoczna na timeline.}
+
+\section*{Live demo — Live Globe, atak teleport (czerwony ALERT)}
+\imgpage{dashboard_globe_alert.png}{\texttt{baltic\_teleport} — banner ``SPOOFING DETECTED — IFOREST\_V2 — RYR2K6 ratio 1.60$\times$''}{Czerwony banner u góry, czerwony pulsujący marker nad Bałtykiem, czerwony alert sidebar (``Ensemble model: CRITICAL''). Ensemble bar 1.60$\times$ (czerwony), Anomaly score 0.85$\times$ (zielony) — pokazuje że trajectory layer (L3 multi-time) wykrywa skok pozycji $\sim$280\,km, mimo że supervised layers go nie widzą.}
+
+\section*{Live demo — Explain modal (real SHAP TreeExplainer)}
+\imgpage{dashboard_explain_modal.png}{Per-tick snapshot z prawdziwymi wartościami SHAP dla L1}{Modal po kliknięciu ``Explain'' pobiera SHAP values z backendu \texttt{/api/explain/\{tick\_id\}}. Top features: \texttt{power\_2MHz} contribution $-3.129$, \texttt{clock\_error\_m} $-0.973$, \texttt{error\_flag\_any} $+0.690$ (czerwony pasek = positive contribution, dla danego tick \emph{nie} skłania do alertu bo overall ratio 0.14$\times$). Base log-odds, predicted proba i ratio widoczne na dole — pełen pipeline interpretowalności end-to-end.}
+
+\section*{Iteration log — co odrzuciliśmy i dlaczego}
+
+\textbf{OpenSky / IsoForest (L3v1 + L3v2)} — wytrenowane, evaluowane, odrzucone z produkcyjnego ensemble.
+
+\begin{itemize}
+\item \textbf{Different threat surface}: TEXBAT/Aissou wykrywają spoofing na poziomie sygnału (signal layer) i kanału (channel layer) na samym samolocie; OpenSky widzi tylko już-zspoofowane pozycje broadcastowane przez ADS-B. Dodanie L3 do ensemble blurowało, co verdict właściwie znaczy.
+\item \textbf{Niższe F1, wyższy false-positive rate}: L3v1 = 0.789, L3v2 = 0.743 vs L1 = 0.984, L2 = 0.976 — OR-fusion zniżyłby precision bez pomocy headline scenariuszom.
+\item \textbf{Brak czystych labels}: trenowane unsupervised + synthetic injection; brak real-world ground truth do walidacji.
+\end{itemize}
+
+\textbf{LSTM-AE trajectories (L4)} — autoencoder trajektorii trenowany na V100 nie pobił prostszego L3v2 multi-time IsoForest na żadnej intensywności ataku (Faza 10). Wycięty z ensemble przed demo, training curve i score distribution zachowane w \texttt{presentation/img/lstm\_*.png}.
+
+\textbf{Co weszło do produkcji}: L1 TEXBAT XGBoost (24 features, F1=0.984), L2 Aissou XGBoost (80 features, F1=0.976), Ensemble OR z \texttt{max(score / threshold)}, sub-millisecond inference, SHAP TreeExplainer dostępny przez Explain modal.
 
 \end{document}

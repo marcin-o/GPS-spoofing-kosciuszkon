@@ -48,17 +48,22 @@
 
 \section*{Streszczenie}
 
-Defense in depth — \textbf{4 wytrenowane modele w produkcji} (L1 XGBoost na TEXBAT, L2 XGBoost na Aissou, L3v1 + L3v2 IsolationForest na OpenSky), \textbf{1 odrzucony} (L4 LSTM-AE — underperforms L3v2 na każdej intensywności ataku, Faza 10). Headline: \textbf{TEXBAT ds7 OOD F1=0.984, Precision=1.000, Stealth phase 100\% recall}. Aissou binary F1=0.976. L3v2 honest calibration F1@FPR=10\%=0.398 (Faza 11).
+Defense in depth — finalnie \textbf{2 modele w produkcji} (L1 XGBoost na TEXBAT, L2 XGBoost na Aissou), \textbf{3 odrzucone}: L3v1 + L3v2 IsolationForest (OpenSky — different threat surface, niższe F1, brak ground truth) oraz L4 LSTM-AE (underperforms L3v2 na każdej intensywności ataku, Faza 10). Wszystkie odrzucone ścieżki zachowane w repo i widoczne na pipeline diagramie dla transparentności (sekcja \emph{Iteration log} w README).
+
+Headline: \textbf{TEXBAT ds7 OOD F1=0.984, Precision=1.000, Stealth phase 100\% recall}. Aissou binary F1=0.976. \textbf{Learning curve}: TEXBAT XGBoost saturuje już przy $\sim$250 próbkach (F1 > 0.95) — pełny zbiór 912 próbek dodaje tylko marginalne gains.
 
 \textit{Pokrywa kryteria: 4 (Method Selection), 5 (Implementation), 6 (Evaluation), 7 (Comparison).}
 
 \clearpage
 
-\section*{Pipeline — architektura end-to-end}
-\imgpage{pipeline_diagram.png}{Defense in depth: 5 modeli, 3 datasety, fusion ensemble, FastAPI + Next.js demo}{Single inference API (\texttt{ml/inference.py}), backend FastAPI z lazy loading + heuristic fallback, frontend Next.js 16 + Mapbox. Latency end-to-end < 200ms.}
+\section*{Pipeline — architektura end-to-end (z odrzuconymi ścieżkami)}
+\imgpage{pipeline_diagram.png}{Production: L1 + L2 + Ensemble OR + SHAP TreeExplainer. OpenSky/L3 path zaszarzony — odrzucony, ale widoczny dla transparentności}{Wyszarzone L3v1/L3v2 + dotted arrows pokazują, że ścieżka OpenSky była wyeksplorowana (model bundles + EDA + ewaluacja), ale nie weszła do produkcyjnego ensemble. Powody: (1) different threat surface — TEXBAT/Aissou widzą spoofing na poziomie sygnału/kanału, OpenSky tylko już-zspoofowane pozycje ADS-B; (2) F1 0.74--0.79 vs 0.98+ w supervised; (3) brak czystych labels (synthetic injection). Single inference API \texttt{ml/inference.py}, FastAPI :8000 + Next.js 16 :3000, sub-millisecond inference per scoring call.}
 
-\section*{Model comparison — 5 modeli, dataset per modelu}
-\imgpage{model_comparison.png}{Porównanie wszystkich modeli z statusem (production / rejected) + dataset}{L1, L2 = paper-grade na real datasets. L3v1 single-snap zachowane jako diagnostyka. L3v2 multi-time = produkcyjny ensemble. \textbf{L4 LSTM-AE = rejected} po attack-intensity sweep.}
+\section*{Model comparison — same metrics across all four production models}
+\imgpage{model_comparison.png}{F1 / Precision / Recall / AUC dla L1, L2, L3v1, L3v2}{Cross-dataset ewaluacja na tych samych metrykach. L1 = TEXBAT XGBoost (ds3 → ds7 OOD), L2 = Aissou XGBoost (random 80/20), L3v1/L3v2 = IsoForest na OpenSky. Pokazane razem mimo że L3v1/L3v2 nie weszły do produkcji — pokazuje uczciwy gap supervised vs unsupervised i uzasadnia decyzję o odrzuceniu.}
+
+\section*{Learning curve — saturacja XGBoost przy $\sim$250 próbkach}
+\imgpage{learning_curve.png}{TEXBAT XGBoost re-trenowany na fragmentach 5\%--100\% zbioru (cleanStatic+ds3, 912 próbek), 3 seedy per fraction, ewaluacja na ds7}{F1 saturuje przy $\sim$250 próbkach (F1 > 0.95), AUC plateauuje przy $\sim$1.0, Recall stabilny. Wniosek: dataset rozmiarem nie był bottleneckiem — pełny zbiór 912 próbek dodaje tylko $\sim$0.03 F1 vs 250 próbek. Implikacja praktyczna: w real-world deployment 200--300 oznakowanych próbek per scenariusz spoofing wystarczy do paper-grade detekcji.}
 
 \section*{TEXBAT XGBoost — ROC + Precision-Recall na ds7 OOD}
 \imgpage{texbat_xgb_roc_pr.png}{F1=0.984, Precision=1.000 (zero FP na 110 clean), Recall=0.969, ROC-AUC=0.997}{Train: cleanStatic + ds3 (912 samples). Test: ds7 OOD (468 samples) — scenariusz nigdy niewidziany w treningu. 200 estimators, max\_depth=5, scale\_pos\_weight=1.636.}

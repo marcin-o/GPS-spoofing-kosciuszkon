@@ -53,7 +53,9 @@
 
 \section*{Streszczenie}
 
-Trzy datasety, łącznie \textbf{\textasciitilde196k samples}. TEXBAT (UT Austin) — gold standard akademicki dla L1 receiver-side. Aissou — published UAV dataset z baseline 99.93\%. OpenSky live — real-time ADS-B nad Europą. \textbf{4 rodziny features} (multi-correlator SQM, wideband AGC power, NavSol residuals, trajectory kinematics) z 1 customowym (\texttt{secondary\_peak\_ratio}) i kluczową preprocessingiem (z-score baseline t<100s per scenariusz).
+Trzy datasety, łącznie \textbf{\textasciitilde186k samples}. TEXBAT (UT Austin) — gold standard akademicki dla L1 receiver-side, w produkcji. Aissou — published UAV dataset z baseline 99.93\%, w produkcji. OpenSky live — real-time ADS-B nad Europą, \textbf{wyeksplorowany ale odrzucony z produkcyjnego ensemble} (zachowany dla transparentności — szczegóły w R2 + sekcji \emph{Iteration log} w README).
+
+\textbf{4 rodziny features} (multi-correlator SQM, wideband AGC power, NavSol residuals, trajectory kinematics) z 1 customowym (\texttt{secondary\_peak\_ratio}) i kluczową preprocessingiem (z-score baseline t<100s per scenariusz).
 
 \textit{Pokrywa kryteria: 1 (Problem Understanding), 2 (Dataset Selection \& Validation), 3 (Feature Engineering).}
 

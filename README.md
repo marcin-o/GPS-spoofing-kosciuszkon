@@ -18,6 +18,16 @@ If you only want to verify the ML side: `make ml-smoke`.
 
 ## Architecture
 
+End-to-end ML pipeline — data sources → preprocessing → models → ensemble → live demo:
+
+![Pipeline diagram](presentation/img/pipeline_diagram.png)
+
+The OpenSky / IsoForest path (L3v1 + L3v2) is shown faded because it was
+**rejected from the production ensemble** — see [Iteration log](#iteration-log)
+below for why we kept exploring it but did not ship it.
+
+Runtime topology:
+
 ```
 ┌─────────────────────────────────────────────────┐
 │  Browser (Next.js 16 + Tailwind + Leaflet)      │
@@ -36,11 +46,18 @@ If you only want to verify the ML side: `make ml-smoke`.
                  ↓
 ┌─────────────────────────────────────────────────┐
 │  ml.inference.score(scenario, payload)          │
-│   - texbat            → texbat-xgb-v1     27d   │
-│   - aissou            → aissou-xgb-bin-v1 80d   │
-│   - opensky_ensemble  → OR-fusion(IF×2 + LSTM)  │
+│   - texbat → texbat-xgb-v1   (F1 = 0.984)       │
+│   - aissou → aissou-xgb-bin-v1 (F1 = 0.976)     │
+│   - SHAP TreeExplainer cached per model         │
 └─────────────────────────────────────────────────┘
 ```
+
+### Learning curve
+
+TEXBAT XGBoost reaches F1 > 0.95 with as few as ~250 training samples;
+the full 912-sample training set adds only marginal gains:
+
+![Learning curve](presentation/img/learning_curve.png)
 
 ## Files of interest
 
@@ -89,3 +106,51 @@ End-to-end Playwright run:
 ```bash
 cd e2e && node screenshots.mjs   # captures e2e_screenshots/*.png
 ```
+
+## Iteration log
+
+Not everything we built made it into production. We're keeping the rejected
+paths visible (in the pipeline diagram, the EDA charts, and the codebase) so
+the work shows.
+
+### OpenSky / IsoForest (L3v1 + L3v2) — rejected
+
+We trained two unsupervised IsolationForest variants on ~26k OpenSky
+ADS-B snapshots: a single-snapshot model (L3v1, F1 = 0.789) and a
+multi-time rolling-window variant (L3v2, F1 = 0.743). Both detect
+synthetic injections on top of real-world live state vectors.
+
+They were dropped from the production ensemble for three reasons:
+
+1. **Different threat surface.** TEXBAT/Aissou catch *signal*-layer and
+   *channel*-layer spoofing on the aircraft itself; OpenSky only sees
+   already-spoofed positions broadcast over ADS-B. Adding it to the
+   ensemble blurred what the verdict actually meant.
+2. **Lower F1, higher false-positive rate.** 0.74–0.79 F1 on synthetic
+   injections vs 0.98+ F1 on the supervised models — combining them
+   with OR-fusion would have dragged precision down without helping
+   the headline scenarios.
+3. **No clean labels.** Training was unsupervised + synthetic
+   injection; there's no real-world ground truth to validate against.
+
+The OpenSky EDA, model bundles, and the Live Globe scenarios that
+*demonstrate* multi-aircraft spoofing detection are still in the repo —
+the Live Globe demo uses a fixed-rule trajectory checker, not the
+IsoForest scores, but the data work is genuine.
+
+### LSTM-AE trajectories (L4) — also rejected
+
+A trajectory autoencoder we trained on V100 (`lstm_ae_trajectories_v1.pt`)
+was originally meant to flag drift attacks the IsoForest missed. It didn't
+beat the simpler L3v2 multi-time IsoForest in any of the held-out evals,
+so we cut it from the ensemble before the demo. The training curve and
+score distribution charts are kept in `presentation/img/` (`lstm_*`).
+
+### What we shipped instead
+
+- **L1 — TEXBAT XGBoost** (24 features, F1 = 0.984 on ds7 OOD).
+  Threshold tuning alone moved F1 from 0.74 → 0.98 — see
+  `presentation/img/texbat_threshold_tuning.png`.
+- **L2 — Aissou XGBoost** (80 features, F1 = 0.976).
+- **Ensemble OR**: `max(score / threshold)` over L1, L2 — sub-millisecond
+  inference, SHAP TreeExplainer surfaced through the `Explain` modal.
