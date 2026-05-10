@@ -2,7 +2,9 @@
 
 Reason templates are driven off the ML-team's actual feature columns
 (power_*MHz, sqm_asym_max, position_drift_m, …) so the demo narrative
-matches what the model is actually picking up.
+matches what the model is actually picking up. Numbers are computed
+from the row, never literal — a reason that doesn't carry data
+shouldn't exist in the list.
 """
 from __future__ import annotations
 
@@ -31,10 +33,30 @@ def dominant_layer(scores: dict[str, dict]) -> str:
 
 # ─────────────────────────────────────────────────── onboard reasons
 
+
+def _aissou_channel_score(row: dict, ch: int) -> tuple[float, str]:
+    """Per-channel anomaly magnitude + name of the dominant component.
+
+    Returns (mag, dominant_name). ``mag`` is the sum of three normalized
+    components (≈ "how many σ above clean each metric is, summed"). The
+    label is whichever component contributed most.
+    """
+    doppler = abs(float(row.get(f"Carrier_Doppler_hz_ch{ch}", 0.0)))
+    tcd     = abs(float(row.get(f"TCD_ch{ch}", 0.0)))
+    cn0_off = abs(float(row.get(f"CN0_ch{ch}", 45.0)) - 45.0)
+    parts = (
+        ("Doppler", doppler / 1500.0),
+        ("TCD",     tcd * 5.0),
+        ("C/N₀",    cn0_off / 5.0),
+    )
+    dom_name = max(parts, key=lambda kv: kv[1])[0]
+    return sum(p[1] for p in parts), dom_name
+
+
 def onboard_reasons(layer: str, ratio: float, row: dict) -> list[str]:
     reasons: list[str] = []
     if layer == "L1":
-        # TEXBAT signal-layer features (MLdev's bundle)
+        # TEXBAT signal-layer features (MLdev's bundle).
         sqm_asym = float(row.get("sqm_asym_max", 0.0))
         sqm_peak = float(row.get("sqm_peak_mean", 1.0))
         power2  = float(row.get("power_2MHz", -45.0))
@@ -61,52 +83,67 @@ def onboard_reasons(layer: str, ratio: float, row: dict) -> list[str]:
             reasons.append("Sygnał TEXBAT w normie")
 
     elif layer == "L2":
-        # Aissou per-channel — find anomalous channel by amplitude.
-        worst_ch = -1
-        worst_mag = 0.0
-        for ch in range(8):
-            doppler = abs(float(row.get(f"Carrier_Doppler_hz_ch{ch}", 0.0)))
-            tcd     = abs(float(row.get(f"TCD_ch{ch}", 0.0)))
-            cn0_off = abs(float(row.get(f"CN0_ch{ch}", 45.0)) - 45.0)
-            mag = doppler / 1500.0 + tcd * 5.0 + cn0_off / 5.0
-            if mag > worst_mag:
-                worst_mag = mag
-                worst_ch = ch
-        if worst_ch >= 0 and worst_mag > 1.5:
-            reasons.append(f"Anomalia kanału PRN{worst_ch+1}: TCD/Doppler 3.4σ powyżej baseline")
-        # Find second worst.
-        second_worst_ch = -1
-        second_worst_mag = 0.0
-        for ch in range(8):
-            if ch == worst_ch:
-                continue
-            doppler = abs(float(row.get(f"Carrier_Doppler_hz_ch{ch}", 0.0)))
-            tcd     = abs(float(row.get(f"TCD_ch{ch}", 0.0)))
-            cn0_off = abs(float(row.get(f"CN0_ch{ch}", 45.0)) - 45.0)
-            mag = doppler / 1500.0 + tcd * 5.0 + cn0_off / 5.0
-            if mag > second_worst_mag:
-                second_worst_mag = mag
-                second_worst_ch = ch
-        if second_worst_ch >= 0 and second_worst_mag > 1.0:
-            reasons.append(f"Anomalia kanału PRN{second_worst_ch+1}: amplituda {second_worst_mag:.2f}σ")
+        # Aissou per-channel — rank channels by composite anomaly magnitude.
+        ranked = sorted(
+            ((ch, *_aissou_channel_score(row, ch)) for ch in range(8)),
+            key=lambda x: x[1],
+            reverse=True,
+        )
+        for ch, mag, dom in ranked[:2]:
+            if mag > 1.0:
+                reasons.append(
+                    f"Anomalia kanału PRN{ch+1}: dominanta {dom}, amplituda {mag:.2f}"
+                )
         if not reasons:
             reasons.append("Wszystkie 8 kanałów Aissou stabilne")
 
-    if ratio >= 1.5:
-        reasons.append("Verdict: CRITICAL — ratio przekroczył 1.5×")
-    elif ratio >= 1.0:
-        reasons.append("Verdict: WARNING — ratio powyżej progu (1.0×)")
     return reasons[:4]
 
 
 # ─────────────────────────────────────────────────── globe reasons
 
+
 def globe_reasons(submodel: str, ratio: float, ac_row: dict) -> list[str]:
+    """Reason lines for a single aircraft tick.
+
+    ``ac_row`` is the scored aircraft entry (see ml_service._prescore_globe):
+    has ``position``, ``ensemble_score``, ``sub_scores``, ``dominant_submodel``,
+    optional ``is_anomaly`` / ``anomaly_kind``.
+    """
     reasons: list[str] = []
-    if submodel == "iforest_v1":
-        reasons.append("IsolationForest v1: anomalia w features bazowych")
-    elif submodel == "iforest_v2":
-        reasons.append("IsolationForest v2-multitime: niespójność trajektorii")
-    if ratio >= 1.5:
-        reasons.append("Ensemble verdict: CRITICAL")
+    sub_scores = ac_row.get("sub_scores") or {}
+    pos = ac_row.get("position") or {}
+
+    label = {
+        "iforest_v1": "IsolationForest v1 (snapshot)",
+        "iforest_v2": "IsolationForest v2 (multi-time)",
+        "lstm_ae":    "LSTM-AE (trajektoria)",
+    }.get(submodel, submodel)
+
+    sub = sub_scores.get(submodel, {})
+    sub_ratio = sub.get("ratio") if isinstance(sub, dict) else None
+    if isinstance(sub_ratio, (int, float)):
+        reasons.append(f"{label}: ratio {sub_ratio:.2f}× (próg 1.0×)")
+    else:
+        reasons.append(f"{label}: dominujący sub-model w ensemble")
+
+    # Concrete state at this tick.
+    if pos:
+        lat = pos.get("lat")
+        lon = pos.get("lon")
+        alt = pos.get("alt")
+        vel = pos.get("velocity")
+        if isinstance(lat, (int, float)) and isinstance(lon, (int, float)):
+            reasons.append(
+                f"Pozycja {lat:.2f}°{'N' if lat >= 0 else 'S'}, "
+                f"{lon:.2f}°{'E' if lon >= 0 else 'W'}"
+                + (f" · alt {float(alt):.0f} m" if isinstance(alt, (int, float)) else "")
+                + (f" · {float(vel):.0f} m/s" if isinstance(vel, (int, float)) else "")
+            )
+
+    kind = str(ac_row.get("anomaly_kind") or "")
+    if kind:
+        kind_pl = {"teleport": "skok pozycji", "smooth_drift": "płynny drift"}.get(kind, kind)
+        reasons.append(f"Wzorzec: {kind_pl}")
+
     return reasons[:3]

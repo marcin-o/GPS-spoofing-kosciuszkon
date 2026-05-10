@@ -100,7 +100,9 @@ def build_globe_payload(scenario_id: str, monotonic_tick: int, *, force_tick: in
         enriched.append({
             **a,
             "last_contact": int(time.time() * 1000),
-            "top_reasons": alert_mapper.globe_reasons(sub_dom, ratio, {}),
+            # Pass full aircraft entry — globe_reasons reads sub_scores +
+            # position + anomaly_kind for concrete (data-bearing) lines.
+            "top_reasons": alert_mapper.globe_reasons(sub_dom, ratio, a),
         })
 
     return {
