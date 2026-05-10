@@ -27,7 +27,7 @@ pub fn show(ui: &mut Ui, state: &AppState) {
                 );
                 ui.add_space(16.0);
                 ui.label(
-                    RichText::new("⚠ DEMO BRIDGE — production reads ARINC 429")
+                    RichText::new("⚠ MOST DEMO — produkcja czyta ARINC 429")
                         .monospace()
                         .color(VERDICT_WARN),
                 );
@@ -36,7 +36,7 @@ pub fn show(ui: &mut Ui, state: &AppState) {
 
         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
             ui.label(
-                RichText::new("KOŚCIUSZKON 2026 · Honeywell")
+                RichText::new("by BeAuth")
                     .monospace()
                     .small()
                     .color(TEXT_DIM),

@@ -3,7 +3,7 @@ name = "gnss-defense-edge"
 version = "0.1.0"
 edition = "2021"
 rust-version = "1.83"
-description = "GNSS Defense Edge — On-Board Spoofing Detector (Tier 1, Kościuszkon 2026)"
+description = "BeDetector Edge — On-Board Spoofing Detector (Tier 1, BeAuth)"
 
 [dependencies]
 # GUI

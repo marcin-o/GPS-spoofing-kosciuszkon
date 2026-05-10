@@ -16,7 +16,7 @@ pub const VERDICT_CRIT: Color32 = Color32::from_rgb(0xEF, 0x44, 0x44); // red-50
 pub const ACCENT_CYAN: Color32 = Color32::from_rgb(0x22, 0xD3, 0xEE); // cyan-400
 pub const ACCENT_VIOLET: Color32 = Color32::from_rgb(0x8B, 0x5C, 0xF6); // violet-500
 
-pub const HONEYWELL_RED: Color32 = Color32::from_rgb(0xEE, 0x31, 0x24);
+pub const ACCENT_RED: Color32 = Color32::from_rgb(0xEE, 0x31, 0x24);
 
 pub fn install(ctx: &egui::Context) {
     let mut style = (*ctx.style()).clone();

@@ -2,13 +2,13 @@ use egui::{RichText, Ui};
 
 use crate::state::AppState;
 
-use super::theme::{ACCENT_CYAN, HONEYWELL_RED, TEXT_DIM};
+use super::theme::{ACCENT_CYAN, ACCENT_RED, TEXT_DIM};
 
 pub fn show(ui: &mut Ui, state: &AppState) {
     ui.horizontal(|ui| {
-        ui.label(RichText::new("GNSS DEFENSE EDGE").strong().monospace().size(16.0).color(HONEYWELL_RED));
+        ui.label(RichText::new("BEDETECTOR").strong().monospace().size(16.0).color(ACCENT_RED));
         ui.add_space(12.0);
-        ui.label(RichText::new("Tier 1 · On-Board Console").monospace().color(TEXT_DIM));
+        ui.label(RichText::new("Konsola pokładowa · Tier 1").monospace().color(TEXT_DIM));
         ui.add_space(20.0);
         if let Some(latest) = state.history.back() {
             ui.label(
@@ -23,7 +23,7 @@ pub fn show(ui: &mut Ui, state: &AppState) {
                     .color(TEXT_DIM),
             );
         } else {
-            ui.label(RichText::new("Awaiting first tick…").italics().color(TEXT_DIM));
+            ui.label(RichText::new("Oczekuję pierwszego ticka…").italics().color(TEXT_DIM));
         }
 
         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {

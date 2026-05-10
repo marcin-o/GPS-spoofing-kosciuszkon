@@ -14,7 +14,7 @@ fn main() -> Result<()> {
         .init();
 
     let args = cli::Cli::parse();
-    tracing::info!(?args, "starting gnss-defense-edge");
+    tracing::info!(?args, "starting BeDetector edge");
 
     let state = Arc::new(RwLock::new(state::AppState::new(args.mode.view())));
     let qar = Arc::new(qar::QarLogger::open(&args.qar)?);
@@ -83,7 +83,7 @@ fn main() -> Result<()> {
         viewport: egui::ViewportBuilder::default()
             .with_inner_size([1280.0, 800.0])
             .with_min_inner_size([960.0, 600.0])
-            .with_title("GNSS Defense Edge — Kościuszkon 2026"),
+            .with_title("BeDetector — Edge Console"),
         ..Default::default()
     };
 

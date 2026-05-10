@@ -3,14 +3,14 @@ use std::path::PathBuf;
 use clap::{Parser, Subcommand};
 
 #[derive(Parser, Debug, Clone)]
-#[command(version, about = "GNSS Defense Edge — On-Board Spoofing Detector (Tier 1)")]
+#[command(version, about = "BeDetector Edge — On-Board Spoofing Detector (Tier 1) · BeAuth")]
 pub struct Cli {
     /// Directory with texbat_l1.onnx, aissou_l2.onnx, model_schema.json
     #[arg(long, default_value = "assets")]
     pub assets_dir: PathBuf,
 
     /// Append-only JSONL log file (QAR-style "black box")
-    #[arg(long, default_value = "gnss-defense-qar.log")]
+    #[arg(long, default_value = "bedetector-qar.log")]
     pub qar: PathBuf,
 
     #[command(subcommand)]
