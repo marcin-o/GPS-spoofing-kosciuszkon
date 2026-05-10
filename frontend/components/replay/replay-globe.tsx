@@ -20,7 +20,6 @@ interface ReplayGlobeProps {
 const SUBMODEL_LABELS: Record<string, { name: string; desc: string; f1: number }> = {
   iforest_v1: { name: "IsolationForest v1",              desc: "Anomalia w features bazowych (snapshot)",   f1: 0.891 },
   iforest_v2: { name: "IsolationForest v2 (multitime)",  desc: "Niespójność trajektorii w oknie czasowym",  f1: 0.912 },
-  lstm_ae:    { name: "LSTM Autoencoder (dynamic)",       desc: "Błąd rekonstrukcji powyżej batch-p95",      f1: 0.935 },
 };
 
 export function ReplayGlobe({ ticks, currentTick }: ReplayGlobeProps) {
@@ -201,7 +200,7 @@ export function ReplayGlobe({ ticks, currentTick }: ReplayGlobeProps) {
                 <span className="text-[11px] tracking-wider uppercase text-slate-400 font-medium">
                   Ensemble breakdown
                 </span>
-                {(["iforest_v1", "iforest_v2", "lstm_ae"] as const).map((sub) => {
+                {(["iforest_v1", "iforest_v2"] as const).map((sub) => {
                   const isDom = domSub === sub;
                   return (
                     <div key={sub} className={`rounded-sm px-2 py-1 ${isDom ? "ring-1 ring-indigo-500/50 bg-indigo-500/5" : ""}`}>

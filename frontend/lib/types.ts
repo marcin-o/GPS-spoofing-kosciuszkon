@@ -100,8 +100,8 @@ export interface AircraftEntry {
     on_ground: boolean;
   };
   ensemble_score: { ratio: number; threshold: number };
-  sub_scores: { iforest_v1: SubScore; iforest_v2: SubScore; lstm_ae: SubScore };
-  dominant_submodel: "iforest_v1" | "iforest_v2" | "lstm_ae";
+  sub_scores: { iforest_v1: SubScore; iforest_v2: SubScore };
+  dominant_submodel: "iforest_v1" | "iforest_v2";
   verdict: Verdict;
   last_contact: number;
   is_anomaly: boolean;

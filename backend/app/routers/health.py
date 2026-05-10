@@ -24,10 +24,8 @@ def get_health() -> dict[str, object]:
              "version": "opensky-iforest-v1", "f1": 0.789},
             {"layer": "L3-iforest-v2", "scenario": "opensky",
              "version": "opensky-iforest-multitime-v2", "f1": 0.743},
-            {"layer": "L3-lstm-ae", "scenario": "opensky",
-             "version": "lstm-ae-trajectories-v1", "f1": 0.935},
             {"layer": "L3-ensemble", "scenario": "opensky_ensemble",
-             "version": "opensky-ensemble-v1", "f1": 0.935},
+             "version": "opensky-ensemble-no-lstm-v1", "f1": 0.789},
         ],
         "inference_latency_ms": latency,
     }

@@ -125,7 +125,7 @@ function buildGlobeTick(scenario: string, state: GlobeFeedState): GlobeTick {
     ac.lon = (lon2 * 180) / Math.PI;
 
     let ratio = 0.15 + Math.random() * 0.1;
-    let dom: "iforest_v1" | "iforest_v2" | "lstm_ae" = "iforest_v1";
+    let dom: "iforest_v1" | "iforest_v2" = "iforest_v1";
     let isAnomaly = false;
     if (i >= onset && targets.has(ac.cs)) {
       isAnomaly = true;
@@ -141,15 +141,13 @@ function buildGlobeTick(scenario: string, state: GlobeFeedState): GlobeTick {
         ac.lat += 0.04 * intens;
         ac.lon -= 0.06 * intens;
         ratio = 0.7 + intens * 1.3;
-        dom = "lstm_ae";
+        dom = "iforest_v2";
       }
     }
     const verdict: Verdict = ratio >= 1.5 ? "CRITICAL" : ratio >= 1.0 ? "WARNING" : "OK";
 
     const reasons = isAnomaly
-      ? (dom === "lstm_ae"
-          ? ["LSTM-AE: błąd rekonstrukcji powyżej progu", "Trajektoria niezgodna z dynamiką"]
-          : ["IsolationForest v2: niespójność wieloskali", `Skok pozycji: Δlat=${(scenario === "baltic_teleport" ? 2.5 : 0.04).toFixed(2)}°`])
+      ? ["IsolationForest v2: niespójność wieloskali", `Skok pozycji: Δlat=${(scenario === "baltic_teleport" ? 2.5 : 0.04).toFixed(2)}°`]
       : ["Wszystkie warstwy w normie"];
 
     return {
@@ -161,7 +159,6 @@ function buildGlobeTick(scenario: string, state: GlobeFeedState): GlobeTick {
       sub_scores: {
         iforest_v1: { ratio: dom === "iforest_v1" ? ratio : Math.min(0.6, ratio * 0.5) },
         iforest_v2: { ratio: dom === "iforest_v2" ? ratio : Math.min(0.6, ratio * 0.6) },
-        lstm_ae: { ratio: dom === "lstm_ae" ? ratio : Math.min(0.7, ratio * 0.4) },
       },
       dominant_submodel: dom,
       verdict,

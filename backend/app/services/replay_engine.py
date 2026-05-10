@@ -67,7 +67,7 @@ SCENARIOS = [
         "mode": "live_globe",
         "duration_s": 22.0,
         "expected_dominant_layer": "ensemble",
-        "description": "Wolny, ciągły drift dwóch samolotów — wykrywany przez LSTM-AE (dynamic).",
+        "description": "Wolny, ciągły drift dwóch samolotów — wykrywany przez IsolationForest multitime.",
     },
 ]
 

@@ -45,7 +45,6 @@ from ml.inference import (
     _zscore_against_baseline,
     load_model,
     score_aissou,
-    score_lstm_ae,
     score_opensky,
     score_opensky_multitime,
     score_texbat,
@@ -179,12 +178,6 @@ def _normalize_v2(score: float, ref: float = 0.5) -> float:
     return float(score / ref)
 
 
-def _normalize_lstm(score: float, threshold: float) -> float:
-    if threshold <= 0:
-        return 0.0
-    return float(score / threshold)
-
-
 def _prescore_globe(scenario_id: str, csv_path: Path) -> GlobeScored:
     df = pd.read_csv(csv_path)
     n_ticks = int(df["snapshot_idx"].max()) + 1
@@ -231,23 +224,11 @@ def _prescore_globe(scenario_id: str, csv_path: Path) -> GlobeScored:
             except Exception as exc:
                 logger.warning("score_opensky_multitime failed at tick %d: %s", tick, exc)
 
-        # L4: LSTM-AE — dynamic threshold per call (small batch ⇒ rank-based)
-        lstm_score_by_icao: dict[str, tuple[float, int]] = {}
-        lstm_threshold_used: float | None = None
-        if tick >= 3:
-            try:
-                r_lstm = score_lstm_ae(snap, threshold_mode="dynamic")
-                lstm_threshold_used = float(r_lstm.get("threshold", 0.0))
-                for icao, sc, pr in zip(r_lstm.get("aircraft", []),
-                                          r_lstm.get("scores", []),
-                                          r_lstm.get("predictions", [])):
-                    lstm_score_by_icao[icao] = (float(sc), int(pr))
-            except Exception as exc:
-                logger.warning("score_lstm_ae failed at tick %d: %s", tick, exc)
-
         # OR-fusion: ensemble_pred = any sub-model alerts; ratio = max normalized.
+        # L4 LSTM-AE removed from production ensemble after Faza 10 attack-intensity
+        # sweep showed it underperforms L3v2 IsolationForest at every intensity.
         rows: list[dict] = []
-        all_icao = sorted(set(v1_score_by_icao) | set(v2_score_by_icao) | set(lstm_score_by_icao)
+        all_icao = sorted(set(v1_score_by_icao) | set(v2_score_by_icao)
                           | set(latest["icao24"].tolist()))
         for icao in all_icao:
             ac_meta = meta.get(icao, {"callsign": icao, "origin_country": "?"})
@@ -258,16 +239,14 @@ def _prescore_globe(scenario_id: str, csv_path: Path) -> GlobeScored:
 
             v1_s, v1_p = v1_score_by_icao.get(icao, (None, 0))
             v2_s, v2_p = v2_score_by_icao.get(icao, (None, 0))
-            l_s, l_p   = lstm_score_by_icao.get(icao, (None, 0))
 
             n1 = _normalize_v1(v1_s) if v1_s is not None else 0.0
             n2 = _normalize_v2(v2_s) if v2_s is not None else 0.0
-            n_lstm = _normalize_lstm(l_s, lstm_threshold_used) if (l_s is not None and lstm_threshold_used) else 0.0
 
-            ratios = {"iforest_v1": n1, "iforest_v2": n2, "lstm_ae": n_lstm}
+            ratios = {"iforest_v1": n1, "iforest_v2": n2}
             dominant = max(ratios.items(), key=lambda kv: kv[1])[0]
             ensemble_ratio = max(ratios.values())
-            ensemble_pred = bool(v1_p or v2_p or l_p)
+            ensemble_pred = bool(v1_p or v2_p)
 
             rows.append({
                 "icao24": icao,
@@ -286,7 +265,6 @@ def _prescore_globe(scenario_id: str, csv_path: Path) -> GlobeScored:
                 "sub_scores": {
                     "iforest_v1": {"ratio": float(n1)},
                     "iforest_v2": {"ratio": float(n2)},
-                    "lstm_ae":    {"ratio": float(n_lstm)},
                 },
                 "dominant_submodel": dominant,
                 "verdict": _verdict_from_ratio(ensemble_ratio),
@@ -332,8 +310,6 @@ def warm_up() -> dict[str, float]:
         load_model("opensky"); out["opensky_iforest_v1"] = round((time.perf_counter() - t0) * 1000, 2)
         t0 = time.perf_counter()
         load_model("opensky_multi"); out["opensky_iforest_v2"] = round((time.perf_counter() - t0) * 1000, 2)
-        t0 = time.perf_counter()
-        load_model("lstm_ae"); out["lstm_ae"] = round((time.perf_counter() - t0) * 1000, 2)
     except Exception as exc:
         logger.warning("warm-up failed: %s", exc)
     _latency_cache.update(out)

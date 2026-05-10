@@ -84,7 +84,6 @@ export function LiveGlobe({ tick, history, scenarioName }: LiveGlobeProps) {
               <div className="flex flex-col gap-2">
                 <ScoreBar thin label="iforest-v1" ratio={selectedAc.sub_scores.iforest_v1.ratio} threshold={1.0} modelVersion="opensky-iforest-v1" />
                 <ScoreBar thin label="iforest-v2 (multitime)" ratio={selectedAc.sub_scores.iforest_v2.ratio} threshold={1.0} modelVersion="opensky-iforest-v2-multitime" />
-                <ScoreBar thin label="lstm-ae" ratio={selectedAc.sub_scores.lstm_ae.ratio} threshold={1.0} modelVersion="lstm-ae-trajectories-v1" />
               </div>
             ) : (
               <span className="text-slate-500 text-xs">no aircraft selected</span>

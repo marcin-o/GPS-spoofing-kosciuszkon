@@ -16,7 +16,7 @@ interface ModelTile {
 const TILES: ModelTile[] = [
   { layer: "L1", title: "Layer L1 — Signal", subtitle: "TEXBAT XGBoost", iconColor: "text-cyan-300" },
   { layer: "L2", title: "Layer L2 — Channel", subtitle: "Aissou XGBoost", iconColor: "text-violet-300" },
-  { layer: "L3", title: "Layer L3 — Trajectory", subtitle: "Ensemble + LSTM-AE", iconColor: "text-amber-300" },
+  { layer: "L3", title: "Layer L3 — Trajectory", subtitle: "IsolationForest ensemble", iconColor: "text-amber-300" },
 ];
 
 export function ModelOverviewCards() {

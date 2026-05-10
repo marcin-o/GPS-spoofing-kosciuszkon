@@ -107,8 +107,6 @@ def globe_reasons(submodel: str, ratio: float, ac_row: dict) -> list[str]:
         reasons.append("IsolationForest v1: anomalia w features bazowych")
     elif submodel == "iforest_v2":
         reasons.append("IsolationForest v2-multitime: niespójność trajektorii")
-    elif submodel == "lstm_ae":
-        reasons.append("LSTM-AE (dynamic): błąd rekonstrukcji powyżej batch p95")
     if ratio >= 1.5:
         reasons.append("Ensemble verdict: CRITICAL")
     return reasons[:3]

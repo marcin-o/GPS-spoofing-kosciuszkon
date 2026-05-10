@@ -19,7 +19,7 @@ const FALLBACK_SCENARIOS: Scenario[] = [
   { id: "texbat_spoof", name: "TEXBAT spoofing (sygnał)", mode: "onboard", duration_s: 20, expected_dominant_layer: "L1", description: "Atak L1." },
   { id: "aissou_channel_attack", name: "Atak kanałowy Aissou", mode: "onboard", duration_s: 20, expected_dominant_layer: "L2", description: "Atak L2 PRN3+PRN5." },
   { id: "baltic_teleport", name: "Bałtyk: teleport", mode: "live_globe", duration_s: 90, expected_dominant_layer: "ensemble", description: "Skok pozycji nad Bałtykiem." },
-  { id: "smooth_drift_fleet", name: "Płynny drift (live)", mode: "live_globe", duration_s: 90, expected_dominant_layer: "ensemble", description: "Wolny drift wykryty przez LSTM-AE." },
+  { id: "smooth_drift_fleet", name: "Płynny drift (live)", mode: "live_globe", duration_s: 90, expected_dominant_layer: "ensemble", description: "Wolny drift wykryty przez IsolationForest multitime." },
 ];
 
 const SESSION_ID = (() => {
