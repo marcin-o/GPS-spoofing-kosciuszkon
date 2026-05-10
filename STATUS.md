@@ -1,4 +1,4 @@
-# STATUS — GNSS Defense Monitor
+# STATUS — BeDetector
 
 Updated as of build verification on 2026-05-09. Use this as the running ledger of what's real vs mocked.
 
@@ -51,7 +51,7 @@ Synthetic data over-fits trivially (smoke test shows F1 ≈ 1.0). The footer rep
 ## Known limitations / what's not done
 
 - LSTM-AE on the synthetic dataset produces extremely high reconstruction errors on out-of-distribution inputs (teleport scenarios) — the score is clipped at `4.0×` for display. Real models would be better calibrated; this is mentioned in the demo notes.
-- No real OpenSky / AISStream feed wired into the new GNSS endpoints (existing legacy `/api/flights/live` still hits OpenSky if creds are set, but the GNSS Defense Monitor scenarios use deterministic CSVs by design).
+- No real OpenSky / AISStream feed wired into the new GNSS endpoints (existing legacy `/api/flights/live` still hits OpenSky if creds are set, but the BeDetector scenarios use deterministic CSVs by design).
 - SHAP TreeExplainer integration is a placeholder (per spec — must not fake values).
 - No persistence: sessions are in-memory. Restarting uvicorn clears the inject state.
 - The INFERENCE latency badge in the top bar reflects most-recent tick latency. The full per-scenario latency profile is in `/api/health.inference_latency_ms`.

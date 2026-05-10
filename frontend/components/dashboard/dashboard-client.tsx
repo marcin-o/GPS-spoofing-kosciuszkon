@@ -24,7 +24,7 @@ const FALLBACK_SCENARIOS: Scenario[] = [
 
 const SESSION_ID = (() => {
   if (typeof window === "undefined") return "ssr";
-  const k = "gnss-session-id";
+  const k = "bedetector-session-id";
   let v = window.sessionStorage.getItem(k);
   if (!v) {
     v = `sess-${Math.random().toString(36).slice(2, 10)}`;
@@ -262,7 +262,7 @@ export function DashboardClient() {
     if (mockMode) {
       // No backend — open a generated text report inline.
       const blob = new Blob(
-        [`GNSS Defense Monitor — Mock Incident Report\nSession: ${SESSION_ID}\nScenario: ${scenario}\nVerdicts: ${verdicts}\n(backend offline; PDF generation unavailable in mock mode)\n`],
+        [`BeDetector — Mock Incident Report\nSession: ${SESSION_ID}\nScenario: ${scenario}\nVerdicts: ${verdicts}\n(backend offline; PDF generation unavailable in mock mode)\n`],
         { type: "text/plain" },
       );
       const a = document.createElement("a");

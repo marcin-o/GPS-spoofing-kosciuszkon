@@ -1,8 +1,8 @@
-# GNSS Defense Monitor — Kościuszkon 2026
+# BeDetector — by BeAuth
 
-Real-time GPS spoofing detection dashboard built for the Honeywell theme.
-Two operational modes (single-aircraft + fleet-wide), six ML model versions,
-five demo scenarios, sub-5 ms inference per scoring call.
+Real-time GPS spoofing detection dashboard. Two operational modes
+(single-aircraft + fleet-wide), six ML model versions, five demo
+scenarios, sub-5 ms inference per scoring call.
 
 ## Quick start
 

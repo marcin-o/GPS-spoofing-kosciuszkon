@@ -1,6 +1,5 @@
-# GNSS Defense Monitor — top-level orchestration.
-# Reproducibility lever per PRD §5.4: one clone + `make install` + `make demo`
-# must boot the full stack.
+# BeDetector — top-level orchestration (BeAuth).
+# One clone + `make install` + `make demo` must boot the full stack.
 
 PYTHON ?= python3
 VENV   ?= backend/.venv

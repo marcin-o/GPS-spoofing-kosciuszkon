@@ -1,7 +1,9 @@
 # Backend — agent guide
 
-FastAPI service for the **GPS Spoofing Sentinel** hackathon project
-(PRD: `../GPS_Spoofing_Sentinel_PRD_v2.md`). The frontend prototype
+FastAPI service for the **BeDetector** product (BeAuth).
+Historical PRD context: `../GPS_Spoofing_Sentinel_PRD_v2.md` (kept as
+reference for the original brief; product naming has since changed).
+The frontend prototype
 (Next.js 16 in `../frontend`) is already built and currently fed by
 Mock Service Worker. The backend's job is to replace those mocks with
 real endpoints that match the FE contract **byte-for-byte**.

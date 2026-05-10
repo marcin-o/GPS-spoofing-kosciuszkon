@@ -26,7 +26,7 @@ export function ModelFooter({ health, mockMode }: ModelFooterProps) {
         <span>connecting…</span>
       )}
       <span className="ml-auto text-slate-600 whitespace-nowrap">
-        BUILD GNSS-DEFENSE-MONITOR-0.2.0 · KOŚCIUSZKON 2026
+        BUILD BEDETECTOR-0.2.0 · BEAUTH
       </span>
     </footer>
   );

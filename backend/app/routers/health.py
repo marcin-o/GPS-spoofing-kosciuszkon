@@ -11,7 +11,7 @@ def get_health() -> dict[str, object]:
     latency = ml_service.latency()
     return {
         "status": "ok",
-        "service": "gnss-defense-monitor-backend",
+        "service": "bedetector-backend",
         "model_loaded": True,
         "legacy_xgb_loaded": load_xgb_model() is not None,
         # Versions and F1 reflect the ML-team's bundle metadata.

@@ -1,4 +1,4 @@
-# 90-second demo script — GNSS Defense Monitor
+# 90-second demo script — BeDetector
 
 Five scenarios, one mode-switch, one inject, one PDF export. Practiced timings in **bold**.
 
@@ -10,7 +10,7 @@ Five scenarios, one mode-switch, one inject, one PDF export. Practiced timings i
 
 ## Scene 1 — Czysty lot WAW → GDN (0:00–0:15)
 
-> "GNSS Defense Monitor monitoruje samolot LOT283 z Warszawy do Gdańska w czasie rzeczywistym.
+> "BeDetector monitoruje samolot LOT283 z Warszawy do Gdańska w czasie rzeczywistym.
 > Górny pasek pokazuje L1 — sygnał TEXBAT (XGBoost na 27 cechach odbiornika).
 > Drugi pasek to L2 — kanały Aissou (XGBoost na 80 cechach × 8 kanałów). 
 > Oba ratio poniżej 1.0× — verdict OK."

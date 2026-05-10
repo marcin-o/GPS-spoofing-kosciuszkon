@@ -18,7 +18,7 @@ else:
                 "https://opensky-network.org/api/states/all",
                 params={"lamin": 35, "lomin": -15, "lamax": 72, "lomax": 45},
                 timeout=20,
-                headers={"User-Agent": "kosciuszkon-research/1.0"},
+                headers={"User-Agent": "bedetector-research/1.0"},
             )
             r.raise_for_status()
             data = r.json()

@@ -31,7 +31,7 @@ from app.services import aisstream, ml_service
 logging.basicConfig(level=logging.INFO,
                     format="%(asctime)s %(levelname)s %(name)s | %(message)s")
 
-app = FastAPI(title="GNSS Defense Monitor API", version="0.2.0")
+app = FastAPI(title="BeDetector API", version="0.2.0")
 
 # CORS — broaden to localhost ports for the new dashboard.
 app.add_middleware(

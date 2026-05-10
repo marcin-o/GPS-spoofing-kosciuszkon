@@ -1,8 +1,10 @@
-# GPS Spoofing Sentinel — Backend
+# BeDetector — Backend
 
-FastAPI service for the GPS Spoofing Sentinel hackathon project
-(PRD: `../GPS_Spoofing_Sentinel_PRD_v2.md`). Replaces the Mock Service
-Worker that currently feeds the Next.js frontend in `../frontend`.
+FastAPI service for the **BeDetector** product (BeAuth). Historical PRD
+context lives at `../GPS_Spoofing_Sentinel_PRD_v2.md` — kept as
+reference for the original brief; product naming has since changed.
+Replaces the Mock Service Worker that previously fed the Next.js frontend
+in `../frontend`.
 
 The single source of truth for every endpoint shape is
 `../frontend/mocks/handlers.ts` and `../frontend/mocks/fixtures.ts`.
