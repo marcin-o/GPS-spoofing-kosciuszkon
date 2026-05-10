@@ -129,7 +129,9 @@ def onboard_tick(scenario_id: str, tick_idx: int) -> tuple[dict, "ml_service.Onb
     rows = _load_raw(scenario_id)
     scored = ml_service.get_onboard_scored(scenario_id, _csv_path(scenario_id))
     n = len(rows)
-    idx = tick_idx % n
+    # Clamp at last tick instead of looping — prevents end-of-scenario teleport
+    # back to t=0 (visible as a discontinuous jump on the live globe).
+    idx = min(tick_idx, n - 1)
     return rows[idx], scored, idx
 
 
@@ -139,7 +141,7 @@ def globe_tick_batch(scenario_id: str, tick_idx: int) -> tuple[list[dict], int]:
     """Returns (scored_aircraft_list, idx)."""
     scored = ml_service.get_globe_scored(scenario_id, _csv_path(scenario_id))
     n = scored.n_ticks
-    idx = tick_idx % n
+    idx = min(tick_idx, n - 1)
     return scored.aircraft_per_tick[idx], idx
 
 
