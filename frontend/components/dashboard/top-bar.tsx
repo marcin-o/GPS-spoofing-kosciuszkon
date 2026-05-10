@@ -1,6 +1,6 @@
 "use client";
 
-import { Activity, Crosshair, Globe, History, Plane, Radar, Zap } from "lucide-react";
+import { Activity, Crosshair, Globe, History, Plane, Radar } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Mode, Scenario } from "@/lib/types";
 
@@ -11,10 +11,8 @@ interface TopBarProps {
   onScenarioChange: (id: string) => void;
   scenarios: Scenario[];
   inferenceMs: number | null;
-  onInject: () => void;
   onExport: () => void;
   mockMode: boolean;
-  injectFlash: boolean;
 }
 
 export function TopBar({
@@ -24,10 +22,8 @@ export function TopBar({
   onScenarioChange,
   scenarios,
   inferenceMs,
-  onInject,
   onExport,
   mockMode,
-  injectFlash,
 }: TopBarProps) {
   const filteredScenarios = mode === "replay" ? scenarios : scenarios.filter((s) => s.mode === mode);
 
@@ -109,18 +105,6 @@ export function TopBar({
               {inferenceMs == null ? "—" : `${inferenceMs.toFixed(0)} ms`}
             </span>
           </div>
-
-          {mode !== "replay" && (
-            <button
-              onClick={onInject}
-              className={cn(
-                "flex items-center gap-1.5 bg-[#EE3124] hover:bg-[#cc2820] text-white font-medium text-xs uppercase tracking-wider px-3 py-1.5 rounded-sm transition-all",
-                injectFlash && "ring-2 ring-[#EE3124] animate-pulse",
-              )}
-            >
-              <Zap className="h-3.5 w-3.5" /> Inject Attack
-            </button>
-          )}
 
           <button
             onClick={onExport}

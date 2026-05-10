@@ -13,13 +13,11 @@ const FLEET = [
 
 export interface MockFeedOptions {
   scenario: string;
-  inject?: () => boolean; // returns true once inject was triggered
   onTick: (tick: OnboardTick | GlobeTick) => void;
 }
 
 interface OnboardFeedState {
   tickIdx: number;
-  injectedAtTick: number | null;
   lat: number;
   lon: number;
 }
@@ -27,16 +25,14 @@ interface OnboardFeedState {
 export function startOnboardMock(opts: MockFeedOptions): () => void {
   const state: OnboardFeedState = {
     tickIdx: 0,
-    injectedAtTick: null,
     lat: 52.165,
     lon: 20.967,
   };
   const interval = setInterval(() => {
-    if (opts.inject?.()) state.injectedAtTick ??= state.tickIdx;
     const tick = buildOnboardTick(opts.scenario, state);
     opts.onTick(tick);
     state.tickIdx += 1;
-  }, 100);
+  }, 125);
   return () => clearInterval(interval);
 }
 
@@ -46,11 +42,7 @@ function buildOnboardTick(scenario: string, state: OnboardFeedState): OnboardTic
   state.lat = 52.165 + (54.378 - 52.165) * Math.min(1, t);
   state.lon = 20.967 + (18.466 - 20.967) * Math.min(1, t);
 
-  const attackOnset = scenario === "normal_waw_gdn"
-    ? Infinity
-    : state.injectedAtTick != null
-      ? state.injectedAtTick + 2
-      : 80;
+  const attackOnset = scenario === "normal_waw_gdn" ? Infinity : 100;
   const intensity = Math.max(0, Math.min(1, (i - attackOnset) / 30));
   const isL1 = scenario === "texbat_spoof";
   const isL2 = scenario === "aissou_channel_attack";
@@ -100,26 +92,24 @@ function buildOnboardTick(scenario: string, state: OnboardFeedState): OnboardTic
 
 interface GlobeFeedState {
   tickIdx: number;
-  injectedAtTick: number | null;
   fleet: Array<{ icao24: string; cs: string; country: string; lat: number; lon: number; alt: number; vel: number; hdg: number }>;
 }
 
 export function startGlobeMock(opts: MockFeedOptions): () => void {
   const fleet = FLEET.map((f) => ({ ...f }));
-  const state: GlobeFeedState = { tickIdx: 0, injectedAtTick: null, fleet };
+  const state: GlobeFeedState = { tickIdx: 0, fleet };
   const interval = setInterval(() => {
-    if (opts.inject?.()) state.injectedAtTick ??= state.tickIdx;
     const tick = buildGlobeTick(opts.scenario, state);
     opts.onTick(tick);
     state.tickIdx += 1;
-  }, 1500);
+  }, 375);
   return () => clearInterval(interval);
 }
 
 function buildGlobeTick(scenario: string, state: GlobeFeedState): GlobeTick {
   const i = state.tickIdx;
   const targets = scenario === "baltic_teleport" ? new Set(["RYR2KE", "DLH4ZW"]) : new Set(["BAW893", "AFR1219"]);
-  const onset = state.injectedAtTick != null ? state.injectedAtTick + 1 : 8;
+  const onset = 8;
 
   const aircraft = state.fleet.map((ac) => {
     // Step movement.
@@ -199,7 +189,7 @@ export function buildMockReplay(scenario: string, n = 200): ReplayBundle {
   const isOnboard = ONBOARD_SCENARIOS.has(scenario);
 
   if (isOnboard) {
-    const state: OnboardFeedState = { tickIdx: 0, injectedAtTick: null, lat: 52.165, lon: 20.967 };
+    const state: OnboardFeedState = { tickIdx: 0, lat: 52.165, lon: 20.967 };
     const ticks: OnboardTick[] = [];
     for (let i = 0; i < n; i++) {
       state.tickIdx = i;
@@ -209,7 +199,7 @@ export function buildMockReplay(scenario: string, n = 200): ReplayBundle {
   }
 
   const fleet = FLEET.map((f) => ({ ...f }));
-  const state: GlobeFeedState = { tickIdx: 0, injectedAtTick: null, fleet };
+  const state: GlobeFeedState = { tickIdx: 0, fleet };
   const ticks: GlobeTick[] = [];
   for (let i = 0; i < n; i++) {
     state.tickIdx = i;

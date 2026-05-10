@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+/* eslint-disable react-hooks/exhaustive-deps */
 import { API_BASE, WS_BASE } from "@/lib/api";
 import type { GlobeTick, HealthResponse, Mode, OnboardTick, Scenario } from "@/lib/types";
 import { startGlobeMock, startOnboardMock } from "@/lib/mock-feed";
@@ -41,12 +42,10 @@ export function DashboardClient() {
   const [globeTick, setGlobeTick] = useState<GlobeTick | null>(null);
   const [onboardHistory, setOnboardHistory] = useState<OnboardTick[]>([]);
   const [globeHistory, setGlobeHistory] = useState<GlobeTick[]>([]);
-  const [injectFlash, setInjectFlash] = useState(false);
   const [latency, setLatency] = useState<number | null>(null);
 
   const wsRef = useRef<WebSocket | null>(null);
   const mockStopRef = useRef<(() => void) | null>(null);
-  const injectPendingRef = useRef(false);
 
   const verdictsRef = useRef<string[]>([]);
 
@@ -120,20 +119,10 @@ export function DashboardClient() {
       const stop = mode === "onboard"
         ? startOnboardMock({
             scenario,
-            inject: () => {
-              if (!injectPendingRef.current) return false;
-              injectPendingRef.current = false;
-              return true;
-            },
             onTick: (t) => receiveOnboardTick(t as OnboardTick),
           })
         : startGlobeMock({
             scenario,
-            inject: () => {
-              if (!injectPendingRef.current) return false;
-              injectPendingRef.current = false;
-              return true;
-            },
             onTick: (t) => receiveGlobeTick(t as GlobeTick),
           });
       mockStopRef.current = stop;
@@ -154,7 +143,6 @@ export function DashboardClient() {
 
     ws.onopen = () => {
       opened = true;
-      injectPendingRef.current = false;
     };
     ws.onerror = () => {
       // Only treat as backend-down if we never managed to open a connection
@@ -266,18 +254,6 @@ export function DashboardClient() {
     return v === "CRITICAL" ? 2 : v === "WARNING" ? 1 : 0;
   }
 
-  const triggerInject = useCallback(() => {
-    setInjectFlash(true);
-    setTimeout(() => setInjectFlash(false), 250);
-
-    if (mockMode) {
-      injectPendingRef.current = true;
-      return;
-    }
-    fetch(`${API_BASE}/api/inject/${encodeURIComponent(scenario)}`, { method: "POST" })
-      .catch((e) => console.warn("inject failed", e));
-  }, [scenario, mockMode]);
-
   const triggerExport = useCallback(() => {
     const verdicts = verdictsRef.current.slice(-60).join(",");
     const url = `${API_BASE}/api/report/${encodeURIComponent(SESSION_ID)}?scenario=${encodeURIComponent(scenario)}&verdicts=${encodeURIComponent(verdicts)}`;
@@ -310,15 +286,9 @@ export function DashboardClient() {
         onScenarioChange={setScenario}
         scenarios={scenarios}
         inferenceMs={latency}
-        onInject={triggerInject}
         onExport={triggerExport}
         mockMode={mockMode}
-        injectFlash={injectFlash}
       />
-
-      {injectFlash && (
-        <div className="fixed inset-0 bg-[#EE3124]/20 pointer-events-none z-30 animate-pulse" />
-      )}
 
       <main className="flex-1 min-h-0 flex flex-col">
         {mode === "onboard" && (
