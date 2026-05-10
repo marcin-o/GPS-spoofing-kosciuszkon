@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { API_BASE } from "@/lib/api";
 import type { OnboardTick } from "@/lib/types";
 import { fmtCoord } from "@/lib/format";
-import { VerdictPill } from "./verdict-pill";
+import { VerdictPill } from "@/components/shared/verdict-pill";
 
 interface ExplainModalProps {
   tick: OnboardTick;

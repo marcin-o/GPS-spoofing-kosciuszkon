@@ -1,8 +1,11 @@
 import type { Metadata } from "next";
-import { Inter, JetBrains_Mono } from "next/font/google";
+import { JetBrains_Mono, Geist } from "next/font/google";
 import "./globals.css";
+import { cn } from "@/lib/utils";
+import { Toaster } from "@/components/ui/sonner";
+import { TooltipProvider } from "@/components/ui/tooltip";
 
-const inter = Inter({ variable: "--font-sans", subsets: ["latin"] });
+const geist = Geist({ subsets: ["latin"], variable: "--font-sans" });
 const jbMono = JetBrains_Mono({ variable: "--font-mono", subsets: ["latin"] });
 
 export const metadata: Metadata = {
@@ -17,10 +20,13 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${inter.variable} ${jbMono.variable} h-full antialiased`}
+      className={cn("dark h-full antialiased", geist.variable, jbMono.variable, "font-sans")}
     >
       <body className="bg-slate-950 text-slate-100 min-h-full font-sans">
-        {children}
+        <TooltipProvider delay={150}>
+          {children}
+          <Toaster richColors theme="dark" position="top-right" />
+        </TooltipProvider>
       </body>
     </html>
   );

@@ -6,7 +6,7 @@ import type { AircraftEntry, GlobeTick } from "@/lib/types";
 import { fmtCoord } from "@/lib/format";
 import { ScoreBar } from "@/components/dashboard/score-bar";
 import { TopReasons } from "@/components/dashboard/top-reasons";
-import { VerdictPill } from "@/components/dashboard/verdict-pill";
+import { VerdictPill } from "@/components/shared/verdict-pill";
 import type { AircraftTrail } from "./replay-map";
 import type { LatLngTuple } from "leaflet";
 

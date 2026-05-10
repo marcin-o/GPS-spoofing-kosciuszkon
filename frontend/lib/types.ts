@@ -1,6 +1,40 @@
 export type Verdict = "OK" | "WARNING" | "CRITICAL";
 
-export type Mode = "onboard" | "live_globe" | "replay";
+export type Mode = "onboard" | "live_globe" | "replay" | "analytics";
+
+export interface Incident {
+  id: string;
+  title: string;
+  date?: string;
+  region?: string;
+  narrative?: string;
+  attack_pattern?: string;
+  casualties?: string | null;
+  linked_scenario_id?: string;
+  lat?: number;
+  lon?: number;
+}
+
+export interface IncidentReplayFrame {
+  ts: number;
+  lat_real: number;
+  lon_real: number;
+  lat_reported: number;
+  lon_reported: number;
+  score: number;
+}
+
+export interface IncidentReplay {
+  id: string;
+  title: string;
+  frames: IncidentReplayFrame[];
+}
+
+export interface IncidentAnnotation {
+  tick: number;
+  label: string;
+  icon?: "alert" | "check" | "shield" | "plane";
+}
 
 export interface Scenario {
   id: string;
