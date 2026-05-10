@@ -73,7 +73,7 @@ export function ExplainModal({ tick, onClose }: ExplainModalProps) {
         <div className="flex items-baseline justify-between">
           <div>
             <h3 className="font-semibold text-sm tracking-wider uppercase text-slate-200">
-              Tick snapshot
+              Migawka ticku
             </h3>
             <p className="font-mono text-[10px] text-slate-500 mt-1">
               {tick.callsign} · {tick.scenario_id} · #{tick.tick}
@@ -82,7 +82,7 @@ export function ExplainModal({ tick, onClose }: ExplainModalProps) {
           <button
             onClick={onClose}
             className="text-slate-400 hover:text-white"
-            aria-label="Close"
+            aria-label="Zamknij"
           >
             <X className="h-4 w-4" />
           </button>
@@ -92,24 +92,24 @@ export function ExplainModal({ tick, onClose }: ExplainModalProps) {
         <div className="flex items-center gap-3 border border-slate-800 rounded-sm bg-slate-900/40 px-3 py-2">
           <VerdictPill verdict={tick.verdict} size="md" pulse={false} />
           <span className="text-[10px] tracking-wider uppercase text-slate-500">
-            dominant
+            dominująca
           </span>
           <span className="font-mono text-sm text-slate-200">{tick.dominant_layer}</span>
           <span className="ml-auto font-mono text-[10px] text-slate-500">
-            {tick.is_attack ? "ATTACK FLAG: TRUE" : "ATTACK FLAG: false"}
+            {tick.is_attack ? "FLAGA ATAKU: TAK" : "FLAGA ATAKU: nie"}
           </span>
         </div>
 
         {/* Per-layer scores */}
         <div className="grid grid-cols-2 gap-3 text-xs">
-          <ScoreCell label="Layer L1 — TEXBAT" score={tick.scores.L1} />
-          <ScoreCell label="Layer L2 — Aissou" score={tick.scores.L2} />
+          <ScoreCell label="Warstwa L1 — TEXBAT" score={tick.scores.L1} />
+          <ScoreCell label="Warstwa L2 — Aissou" score={tick.scores.L2} />
         </div>
 
         {/* Top reasons (already computed server-side) */}
         <div className="flex flex-col gap-1">
           <span className="text-[10px] tracking-wider uppercase text-slate-500">
-            Top reasons
+            Główne przyczyny
           </span>
           <ul className="text-xs flex flex-col gap-1">
             {tick.top_reasons.length === 0 && (
@@ -126,15 +126,15 @@ export function ExplainModal({ tick, onClose }: ExplainModalProps) {
         {/* Position context */}
         <div className="grid grid-cols-3 gap-2 text-xs font-mono text-slate-400">
           <div>
-            <div className="text-[9px] tracking-wider uppercase text-slate-500">Position</div>
+            <div className="text-[9px] tracking-wider uppercase text-slate-500">Pozycja</div>
             <div>{fmtCoord(tick.position.lat, tick.position.lon)}</div>
           </div>
           <div>
-            <div className="text-[9px] tracking-wider uppercase text-slate-500">Altitude</div>
+            <div className="text-[9px] tracking-wider uppercase text-slate-500">Wysokość</div>
             <div>{(tick.position.alt / 1000).toFixed(1)}k m</div>
           </div>
           <div>
-            <div className="text-[9px] tracking-wider uppercase text-slate-500">Heading</div>
+            <div className="text-[9px] tracking-wider uppercase text-slate-500">Kurs</div>
             <div>{tick.position.heading.toFixed(0)}°</div>
           </div>
         </div>
@@ -146,18 +146,18 @@ export function ExplainModal({ tick, onClose }: ExplainModalProps) {
               SHAP — {shap?.dominant_layer ?? "…"} TreeExplainer
             </span>
             <span className="font-mono text-[9px] text-slate-500">
-              {shap?.model_version ?? "loading…"}
+              {shap?.model_version ?? "ładowanie…"}
             </span>
           </div>
 
           {shapErr && (
             <div className="text-[11px] text-red-400 italic">
-              SHAP unavailable: {shapErr}
+              SHAP niedostępny: {shapErr}
             </div>
           )}
           {!shapErr && !shap && (
             <div className="text-[11px] text-slate-500 italic">
-              Computing SHAP values…
+              Liczenie wartości SHAP…
             </div>
           )}
           {shap && shap.top_features.length > 0 && (
@@ -165,7 +165,7 @@ export function ExplainModal({ tick, onClose }: ExplainModalProps) {
           )}
           {shap && (
             <div className="text-[10px] text-slate-500 mt-2 font-mono">
-              base log-odds {fmt(shap.base_value)} · proba {shap.predicted_proba.toFixed(3)} (thr {shap.threshold.toFixed(3)} → ratio {shap.ratio.toFixed(2)}×)
+              base log-odds {fmt(shap.base_value)} · proba {shap.predicted_proba.toFixed(3)} (próg {shap.threshold.toFixed(3)} → ratio {shap.ratio.toFixed(2)}×)
             </div>
           )}
         </div>
@@ -230,7 +230,7 @@ function ScoreCell({
           {score.ratio.toFixed(2)}×
         </span>
         <span className="font-mono text-[10px] text-slate-500">
-          (raw {score.raw.toFixed(3)} / thr {score.threshold.toFixed(2)})
+          (proba {score.raw.toFixed(3)} / próg {score.threshold.toFixed(2)})
         </span>
       </div>
       <span className="font-mono text-[9px] text-slate-600 tracking-wider uppercase">

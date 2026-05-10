@@ -46,7 +46,7 @@ export function IncidentLibrary({ onSelect, selectedId }: IncidentLibraryProps) 
         }
       >
         <Library className="h-3.5 w-3.5" />
-        Incident Library
+        Biblioteka incydentów
       </SheetTrigger>
       <SheetContent
         side="right"
@@ -55,10 +55,10 @@ export function IncidentLibrary({ onSelect, selectedId }: IncidentLibraryProps) 
         <SheetHeader className="border-b border-slate-800 p-4">
           <SheetTitle className="flex items-center gap-2 text-slate-200 text-sm uppercase tracking-wider">
             <Library className="h-4 w-4 text-[#EE3124]" />
-            Historical Incidents
+            Incydenty historyczne
           </SheetTitle>
           <SheetDescription className="text-xs text-slate-500">
-            Real-world GPS spoofing events. Click to load with the Sentinel detection layer.
+            Realne zdarzenia spoofingowe. Kliknij, by załadować w warstwie detekcji BeDetector.
           </SheetDescription>
         </SheetHeader>
         <ScrollArea className="flex-1">
@@ -109,11 +109,11 @@ export function IncidentLibrary({ onSelect, selectedId }: IncidentLibraryProps) 
                 )}
                 <div className="flex items-center justify-between mt-1 pt-1 border-t border-slate-800">
                   <span className="text-[9px] uppercase tracking-wider text-slate-500 font-mono">
-                    {inc.attack_pattern ?? "Pattern: —"}
+                    {inc.attack_pattern ?? "Wzorzec: —"}
                   </span>
                   <span className="text-[10px] text-[#EE3124] font-mono uppercase tracking-wider flex items-center gap-1">
                     <Play className="h-3 w-3" />
-                    Replay
+                    Powtórz
                   </span>
                 </div>
               </motion.button>

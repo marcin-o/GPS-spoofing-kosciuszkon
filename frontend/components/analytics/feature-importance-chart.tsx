@@ -17,7 +17,7 @@ export function FeatureImportanceChart() {
       <CardHeader className="px-4 gap-1">
         <CardTitle className="flex items-center gap-2 text-sm text-slate-200">
           <BarChart3 className="h-4 w-4 text-[#EE3124]" />
-          Feature importance
+          Ważność cech
         </CardTitle>
         <span className="text-[10px] uppercase tracking-wider text-slate-500 font-mono">
           XGBoost gain · top 9
@@ -54,7 +54,7 @@ export function FeatureImportanceChart() {
                   fontSize: 11,
                 }}
                 labelStyle={{ color: "#cbd5e1" }}
-                formatter={(value) => [Number(value).toFixed(3), "importance"]}
+                formatter={(value) => [Number(value).toFixed(3), "ważność"]}
               />
               <Bar dataKey="importance" radius={[0, 3, 3, 0]}>
                 {FEATURE_IMPORTANCE.map((row) => (

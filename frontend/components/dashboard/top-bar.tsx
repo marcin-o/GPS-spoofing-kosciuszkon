@@ -33,10 +33,10 @@ const MODE_ICONS = {
 } as const;
 
 const MODE_LABELS: Record<Mode, string> = {
-  onboard: "Onboard",
-  live_globe: "Live Globe",
-  replay: "Replay",
-  analytics: "Analytics",
+  onboard: "Pokład",
+  live_globe: "Globus na żywo",
+  replay: "Powtórka",
+  analytics: "Analityka",
 };
 
 export function TopBar({
@@ -116,13 +116,13 @@ export function TopBar({
 
         {mode !== "analytics" && (
           <div className="ml-1 flex items-center gap-2">
-            <span className="text-[10px] tracking-wider uppercase text-slate-500">scenario</span>
+            <span className="text-[10px] tracking-wider uppercase text-slate-500">scenariusz</span>
             <Select
               value={scenario}
               onValueChange={(v) => v != null && onScenarioChange(v)}
             >
               <SelectTrigger className="h-8 min-w-[230px] bg-slate-900/60 border-slate-800 text-xs font-mono focus-visible:ring-[#EE3124]/40">
-                <SelectValue placeholder="Select scenario" />
+                <SelectValue placeholder="Wybierz scenariusz" />
               </SelectTrigger>
               <SelectContent>
                 {filteredScenarios.map((s) => {
@@ -146,7 +146,7 @@ export function TopBar({
               className="border-amber-500/40 bg-amber-500/10 text-amber-300 font-mono text-[10px] uppercase tracking-wider"
             >
               <Activity className="h-3 w-3 animate-pulse" />
-              Mock — backend offline
+              Tryb mock — backend offline
             </Badge>
           )}
 
@@ -155,12 +155,12 @@ export function TopBar({
             className="border-slate-800 bg-slate-900/40 font-mono text-[10px] uppercase tracking-wider"
           >
             <Radio className={cn("h-3 w-3", mockMode ? "text-amber-400" : "text-emerald-400")} />
-            {mockMode ? "MOCK" : "LIVE"}
+            {mockMode ? "MOCK" : "NA ŻYWO"}
           </Badge>
 
           <div className="flex items-center gap-1.5 font-mono text-xs">
             <Crosshair className={cn("h-3.5 w-3.5", latencyTone)} />
-            <span className="tracking-wider uppercase text-[10px] text-slate-500">INFERENCE</span>
+            <span className="tracking-wider uppercase text-[10px] text-slate-500">INFERENCJA</span>
             <span className={cn("tabular-nums transition-colors", latencyTone)} data-testid="inference-latency">
               {inferenceMs == null ? (
                 "—"
@@ -185,22 +185,22 @@ export function TopBar({
                       ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-300"
                       : "border-slate-800 bg-slate-900/40 text-slate-500 hover:text-slate-300",
                   )}
-                  aria-label={audioEnabled ? "Mute alerts" : "Unmute alerts"}
+                  aria-label={audioEnabled ? "Wycisz alerty" : "Włącz dźwięk alertów"}
                 />
               }
             />
-            <TooltipContent>{audioEnabled ? "Audio: on" : "Audio: muted"}</TooltipContent>
+            <TooltipContent>{audioEnabled ? "Dźwięk: włączony" : "Dźwięk: wyciszony"}</TooltipContent>
             {audioEnabled ? <Volume2 className="h-3.5 w-3.5 pointer-events-none" /> : <VolumeX className="h-3.5 w-3.5 pointer-events-none" />}
           </Tooltip>
 
           <div className="flex items-center gap-1.5 border border-slate-800 bg-slate-900/40 rounded-md px-2 h-8">
             <span className="text-[10px] uppercase tracking-wider text-slate-500 font-mono">
-              {voiceLLMEnabled ? "voice" : "beep"}
+              {voiceLLMEnabled ? "głos" : "beep"}
             </span>
             <Switch
               checked={voiceLLMEnabled}
               onCheckedChange={() => toggleVoiceLLM()}
-              aria-label="Toggle voice alert"
+              aria-label="Przełącz alerty głosowe"
               className="data-[state=checked]:bg-[#EE3124]"
             />
           </div>
@@ -211,7 +211,7 @@ export function TopBar({
             onClick={onExport}
             className="h-8 text-[11px] uppercase tracking-wider border-slate-800 bg-slate-900/40 hover:bg-slate-800/60 hover:border-slate-700"
           >
-            Export Report
+            Eksportuj raport
           </Button>
         </div>
       </div>

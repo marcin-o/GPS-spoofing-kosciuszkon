@@ -29,15 +29,15 @@ export interface FeatureImportance {
 }
 
 export const FEATURE_IMPORTANCE: FeatureImportance[] = [
-  { feature: "C/N0 variance",          layer: "L1", importance: 0.231 },
-  { feature: "PRN3 anomaly",           layer: "L2", importance: 0.198 },
-  { feature: "Doppler delta",          layer: "L1", importance: 0.176 },
-  { feature: "PRN5 channel power",     layer: "L2", importance: 0.142 },
-  { feature: "Position jump (km/s)",   layer: "L3", importance: 0.128 },
-  { feature: "NIC drop rate",          layer: "L1", importance: 0.114 },
-  { feature: "Heading discontinuity",  layer: "L3", importance: 0.097 },
-  { feature: "Velocity inconsistency", layer: "L3", importance: 0.084 },
-  { feature: "Altitude drift (m/s)",   layer: "L3", importance: 0.071 },
+  { feature: "Wariancja C/N₀",         layer: "L1", importance: 0.231 },
+  { feature: "Anomalia PRN3",          layer: "L2", importance: 0.198 },
+  { feature: "Δ Doppler",              layer: "L1", importance: 0.176 },
+  { feature: "Moc kanału PRN5",        layer: "L2", importance: 0.142 },
+  { feature: "Skok pozycji (km/s)",    layer: "L3", importance: 0.128 },
+  { feature: "Spadek NIC",             layer: "L1", importance: 0.114 },
+  { feature: "Nieciągłość kursu",      layer: "L3", importance: 0.097 },
+  { feature: "Niespójność prędkości",  layer: "L3", importance: 0.084 },
+  { feature: "Drift wysokości (m/s)",  layer: "L3", importance: 0.071 },
 ];
 
 export interface ShapBucket {
@@ -47,12 +47,12 @@ export interface ShapBucket {
 }
 
 export const SHAP_GLOBAL: ShapBucket[] = [
-  { feature: "C/N0 variance",      meanAbs: 0.342, positiveShare: 0.78 },
-  { feature: "PRN3 anomaly",       meanAbs: 0.298, positiveShare: 0.81 },
-  { feature: "Doppler delta",      meanAbs: 0.241, positiveShare: 0.69 },
-  { feature: "Position jump",      meanAbs: 0.187, positiveShare: 0.85 },
-  { feature: "PRN5 channel power", meanAbs: 0.166, positiveShare: 0.74 },
-  { feature: "NIC drop rate",      meanAbs: 0.131, positiveShare: 0.71 },
-  { feature: "Heading delta",      meanAbs: 0.108, positiveShare: 0.62 },
-  { feature: "Altitude drift",     meanAbs: 0.094, positiveShare: 0.58 },
+  { feature: "Wariancja C/N₀",     meanAbs: 0.342, positiveShare: 0.78 },
+  { feature: "Anomalia PRN3",      meanAbs: 0.298, positiveShare: 0.81 },
+  { feature: "Δ Doppler",          meanAbs: 0.241, positiveShare: 0.69 },
+  { feature: "Skok pozycji",       meanAbs: 0.187, positiveShare: 0.85 },
+  { feature: "Moc kanału PRN5",    meanAbs: 0.166, positiveShare: 0.74 },
+  { feature: "Spadek NIC",         meanAbs: 0.131, positiveShare: 0.71 },
+  { feature: "Δ kursu",            meanAbs: 0.108, positiveShare: 0.62 },
+  { feature: "Drift wysokości",    meanAbs: 0.094, positiveShare: 0.58 },
 ];

@@ -28,6 +28,12 @@ const DOT: Record<Verdict, string> = {
   CRITICAL: "bg-red-500",
 };
 
+const LABEL_PL: Record<Verdict, string> = {
+  OK: "OK",
+  WARNING: "OSTRZEŻENIE",
+  CRITICAL: "KRYTYCZNY",
+};
+
 export function VerdictPill({ verdict, size = "md", pulse = true, className }: VerdictPillProps) {
   const dotSize = size === "lg" ? "h-2 w-2" : "h-1.5 w-1.5";
   return (
@@ -49,7 +55,7 @@ export function VerdictPill({ verdict, size = "md", pulse = true, className }: V
           verdict === "CRITICAL" && pulse && "animate-pulse",
         )}
       />
-      {verdict}
+      {LABEL_PL[verdict]}
     </span>
   );
 }

@@ -51,6 +51,7 @@ export function AlertSystem({ events }: AlertSystemProps) {
           description: `ratio ${ev.ratio.toFixed(2)}× · ${ev.reason}`,
           duration: 5500,
         });
+        // (toast title intentionally bilingual — "SPOOFING" is the term used in literature)
 
         setBannerEvent(ev);
         if (bannerTimerRef.current) clearTimeout(bannerTimerRef.current);
@@ -63,11 +64,11 @@ export function AlertSystem({ events }: AlertSystemProps) {
         if (audioEnabled) {
           if (voiceLLMEnabled) {
             const alertId = resolveAlertId(ev.scenarioId ?? "", ev.callsign);
-            const loadingToast = toast.loading("🔊 Generating voice alert…", { duration: 4000 });
+            const loadingToast = toast.loading("🔊 Generuję alert głosowy…", { duration: 4000 });
             playVoiceAlert({ alertId }).then((mode) => {
               toast.dismiss(loadingToast);
               if (mode === "beep") {
-                toast.message("Voice unavailable — beep fallback", { duration: 1800 });
+                toast.message("Głos niedostępny — fallback do beepa", { duration: 1800 });
               }
             });
           } else {
@@ -105,7 +106,7 @@ export function AlertSystem({ events }: AlertSystemProps) {
               <AlertTriangle className="h-6 w-6 flex-none animate-pulse" />
               <div className="flex flex-col leading-tight">
                 <span className="font-semibold tracking-wider uppercase text-sm">
-                  Spoofing detected — {bannerEvent.layer} — {bannerEvent.callsign}
+                  Wykryto spoofing — {bannerEvent.layer} — {bannerEvent.callsign}
                 </span>
                 <span className="font-mono text-xs opacity-95">
                   ratio {bannerEvent.ratio.toFixed(2)}× · {bannerEvent.reason}

@@ -53,8 +53,8 @@ export function LiveGlobe({ tick, history, scenarioName }: LiveGlobeProps) {
           <span className="ml-2 font-mono text-[10px] text-slate-500">tick #{tick?.tick ?? "—"}</span>
           <span className="ml-auto flex items-center gap-3 font-mono text-xs">
             <span className="text-emerald-400">OK {counts.OK}</span>
-            <span className="text-amber-400">WARN {counts.WARNING}</span>
-            <span className="text-red-500">CRIT {counts.CRITICAL}</span>
+            <span className="text-amber-400">OSTRZ {counts.WARNING}</span>
+            <span className="text-red-500">KRYT {counts.CRITICAL}</span>
           </span>
         </div>
 
@@ -78,7 +78,7 @@ export function LiveGlobe({ tick, history, scenarioName }: LiveGlobeProps) {
           />
           <div className="border border-slate-800 bg-slate-900/60 rounded-sm p-3 flex flex-col gap-2">
             <span className="text-[11px] tracking-wider uppercase text-slate-400 font-medium">
-              Ensemble breakdown
+              Rozbicie ensemble
             </span>
             {selectedAc ? (
               <div className="flex flex-col gap-2">
@@ -86,7 +86,7 @@ export function LiveGlobe({ tick, history, scenarioName }: LiveGlobeProps) {
                 <ScoreBar thin label="iforest-v2 (multitime)" ratio={selectedAc.sub_scores.iforest_v2.ratio} threshold={1.0} modelVersion="opensky-iforest-v2-multitime" />
               </div>
             ) : (
-              <span className="text-slate-500 text-xs">no aircraft selected</span>
+              <span className="text-slate-500 text-xs">nie wybrano samolotu</span>
             )}
           </div>
         </div>
@@ -118,7 +118,7 @@ export function LiveGlobe({ tick, history, scenarioName }: LiveGlobeProps) {
           <div className="px-3 py-2 border-b border-slate-800 flex items-center gap-2">
             <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
             <span className="text-[11px] tracking-wider uppercase text-slate-400 font-medium">
-              Aircraft list
+              Lista samolotów
             </span>
             <span className="ml-auto font-mono text-[10px] text-slate-500">{sorted.length}</span>
           </div>
@@ -127,10 +127,10 @@ export function LiveGlobe({ tick, history, scenarioName }: LiveGlobeProps) {
               <thead className="sticky top-0 bg-slate-900/95 border-b border-slate-800">
                 <tr className="text-slate-500 tracking-wider uppercase text-[9px]">
                   <th className="text-left px-2 py-1.5">Callsign</th>
-                  <th className="text-left px-2 py-1.5">Country</th>
+                  <th className="text-left px-2 py-1.5">Kraj</th>
                   <th className="text-right px-2 py-1.5">Ratio</th>
-                  <th className="text-left px-2 py-1.5">Sub</th>
-                  <th className="text-right px-2 py-1.5">Age</th>
+                  <th className="text-left px-2 py-1.5">Sub-model</th>
+                  <th className="text-right px-2 py-1.5">Wiek</th>
                 </tr>
               </thead>
               <tbody>

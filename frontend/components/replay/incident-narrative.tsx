@@ -66,7 +66,7 @@ export function IncidentNarrative({ incident, annotations, currentTick, totalTic
       <Card className="border-slate-800 bg-slate-900/60 gap-2 py-3">
         <CardHeader className="px-3 gap-0">
           <CardTitle className="text-[11px] uppercase tracking-wider text-slate-400 font-medium">
-            Timeline
+            Oś czasu
           </CardTitle>
         </CardHeader>
         <CardContent className="px-3">
@@ -110,15 +110,15 @@ export function IncidentNarrative({ incident, annotations, currentTick, totalTic
               <div className="flex items-center gap-2">
                 <Shield className="h-4 w-4 text-[#EE3124]" />
                 <span className="text-[11px] uppercase tracking-wider text-[#EE3124] font-semibold">
-                  Sentinel Detection
+                  Detekcja BeDetector
                 </span>
               </div>
               <div className="font-mono text-xs text-slate-200">
-                Detected at <span className="text-[#EE3124]">T+{sentinelDetectionTick}</span> of {totalTicks}.
+                Wykryto w <span className="text-[#EE3124]">T+{sentinelDetectionTick}</span> z {totalTicks}.
                 <Separator className="my-1.5 bg-slate-800" />
                 <span className="text-[10px] text-slate-400 leading-relaxed block">
-                  In a real cockpit, this lead-time gives the crew the opportunity to drop GPS, fall back to
-                  inertial nav, and request manual vectors before the spoofed track diverges.
+                  W realnym kokpicie ten zapas czasu daje załodze szansę porzucić GPS, przejść na nawigację
+                  inercyjną i poprosić o manualne wektory zanim sfałszowana trasa się rozbiegnie.
                 </span>
               </div>
             </CardContent>

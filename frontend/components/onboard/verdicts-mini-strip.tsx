@@ -22,7 +22,7 @@ export function VerdictsMiniStrip({ verdicts, windowSize = 30 }: VerdictsMiniStr
   return (
     <div className="flex items-center gap-2 border border-slate-800 bg-slate-900/40 rounded-sm px-3 py-2">
       <span className="text-[10px] tracking-wider uppercase text-slate-500 font-medium">
-        last {windowSize}
+        ostatnie {windowSize}
       </span>
       <div className="flex gap-[2px] flex-1">
         {Array.from({ length: padding }).map((_, i) => (
@@ -42,7 +42,7 @@ export function VerdictsMiniStrip({ verdicts, windowSize = 30 }: VerdictsMiniStr
                     COLOR[v],
                     v === "CRITICAL" && "ring-1 ring-red-400/60",
                   )}
-                  aria-label={`tick ${slice.length - i} verdict ${v}`}
+                  aria-label={`tick ${slice.length - i} werdykt ${v}`}
                 />
               }
             />

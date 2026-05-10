@@ -143,7 +143,7 @@ export function TimelineScrubber({
                           ? "border-[#EE3124]/60 bg-[#EE3124]/15 text-[#EE3124]"
                           : "border-slate-700 bg-slate-900 text-slate-500 hover:border-slate-500",
                       )}
-                      aria-label={`Annotation: ${a.label}`}
+                      aria-label={`Adnotacja: ${a.label}`}
                     />
                   }
                 />
@@ -199,7 +199,7 @@ export function TimelineScrubber({
         <button
           onClick={onReset}
           className="text-slate-400 hover:text-white transition-colors"
-          title="Reset (R)"
+          title="Resetuj (R)"
         >
           <RotateCcw className="h-4 w-4" />
         </button>
@@ -218,7 +218,7 @@ export function TimelineScrubber({
               ? "bg-indigo-500 hover:bg-indigo-400 text-white"
               : "bg-slate-700 hover:bg-slate-600 text-white",
           )}
-          title="Play/Pause (Space)"
+          title="Odtwarzaj/Pauza (Space)"
         >
           {playing ? <Pause className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5" />}
         </button>
@@ -232,7 +232,7 @@ export function TimelineScrubber({
 
         {/* Speed selector */}
         <div className="flex items-center gap-1.5 ml-1">
-          <span className="text-[10px] tracking-wider uppercase text-slate-500">Speed</span>
+          <span className="text-[10px] tracking-wider uppercase text-slate-500">Prędkość</span>
           <select
             value={speed}
             onChange={(e) => onSpeedChange(Number(e.target.value))}

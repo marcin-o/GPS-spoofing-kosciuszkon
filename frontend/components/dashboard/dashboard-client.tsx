@@ -209,7 +209,7 @@ export function DashboardClient() {
         callsign: smoothed.callsign,
         layer: smoothed.dominant_layer,
         ratio: smoothed.scores[smoothed.dominant_layer].ratio,
-        reason: smoothed.top_reasons[0] ?? "Verdict escalation",
+        reason: smoothed.top_reasons[0] ?? "Eskalacja werdyktu",
         scenarioId: smoothed.scenario_id,
       });
     }
@@ -244,7 +244,7 @@ export function DashboardClient() {
           callsign: a.callsign,
           layer: a.dominant_submodel,
           ratio: a.ensemble_score.ratio,
-          reason: a.top_reasons[0] ?? "Ensemble flagged",
+          reason: a.top_reasons[0] ?? "Ensemble oflagował",
           scenarioId: t.scenario_id,
         });
       }
@@ -262,7 +262,7 @@ export function DashboardClient() {
     if (mockMode) {
       // No backend — open a generated text report inline.
       const blob = new Blob(
-        [`BeDetector — Mock Incident Report\nSession: ${SESSION_ID}\nScenario: ${scenario}\nVerdicts: ${verdicts}\n(backend offline; PDF generation unavailable in mock mode)\n`],
+        [`BeDetector — raport incydentu (mock)\nSesja: ${SESSION_ID}\nScenariusz: ${scenario}\nWerdykty: ${verdicts}\n(backend offline; generacja PDF niedostępna w trybie mock)\n`],
         { type: "text/plain" },
       );
       const a = document.createElement("a");

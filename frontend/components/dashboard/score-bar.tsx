@@ -80,7 +80,7 @@ export function ScoreBar({
       {!thin && (
         <div className="flex justify-between items-baseline">
           <div className="font-mono text-[10px] text-slate-500 tracking-wider uppercase">
-            <span>THRESHOLD: {threshold.toFixed(2)}</span>
+            <span>PRÓG: {threshold.toFixed(2)}</span>
             {f1 !== undefined && <span className="ml-3">F1: {f1.toFixed(3)}</span>}
             <span className="ml-3 text-slate-600">{modelVersion}</span>
           </div>

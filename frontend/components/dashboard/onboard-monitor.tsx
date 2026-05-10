@@ -58,16 +58,16 @@ export function OnboardMonitor({ tick, history, scenarioName }: OnboardMonitorPr
                 </div>
               </div>
               <Tooltip>
-                <TooltipTrigger render={<Stack label="Position" value={tick ? fmtCoord(tick.position.lat, tick.position.lon) : "—"} />} />
-                <TooltipContent>Reported GPS coordinates from receiver (lat, lon).</TooltipContent>
+                <TooltipTrigger render={<Stack label="Pozycja" value={tick ? fmtCoord(tick.position.lat, tick.position.lon) : "—"} />} />
+                <TooltipContent>Zgłoszone współrzędne GPS z odbiornika (szer., dł.).</TooltipContent>
               </Tooltip>
               <Tooltip>
-                <TooltipTrigger render={<Stack label="Altitude" value={tick ? fmtAlt(tick.position.alt) : "—"} />} />
-                <TooltipContent>Barometric altitude above sea level.</TooltipContent>
+                <TooltipTrigger render={<Stack label="Wysokość" value={tick ? fmtAlt(tick.position.alt) : "—"} />} />
+                <TooltipContent>Wysokość barometryczna nad poziomem morza.</TooltipContent>
               </Tooltip>
               <Tooltip>
-                <TooltipTrigger render={<Stack label="Heading" value={tick ? `${tick.position.heading.toFixed(0)}°` : "—"} />} />
-                <TooltipContent>True track over ground (0° = north).</TooltipContent>
+                <TooltipTrigger render={<Stack label="Kurs" value={tick ? `${tick.position.heading.toFixed(0)}°` : "—"} />} />
+                <TooltipContent>Kurs rzeczywisty względem ziemi (0° = północ).</TooltipContent>
               </Tooltip>
               <div className="ml-auto flex items-center gap-3">
                 {tick ? <VerdictPill verdict={tick.verdict} size="lg" /> : <Skeleton className="h-7 w-24" />}
@@ -79,7 +79,7 @@ export function OnboardMonitor({ tick, history, scenarioName }: OnboardMonitorPr
                   className="h-8 text-[11px] uppercase tracking-wider border-slate-800 bg-slate-900/40 hover:bg-slate-800/60 hover:border-slate-700"
                 >
                   <Sparkles className="h-3.5 w-3.5" />
-                  Explain
+                  Wyjaśnij
                 </Button>
               </div>
             </CardContent>
@@ -102,7 +102,7 @@ export function OnboardMonitor({ tick, history, scenarioName }: OnboardMonitorPr
           {tick ? (
             <>
               <ScoreBar
-                label="Layer L1 — Signal (TEXBAT)"
+                label="Warstwa L1 — Sygnał (TEXBAT)"
                 ratio={tick.scores.L1.ratio}
                 threshold={tick.scores.L1.threshold}
                 modelVersion={tick.scores.L1.model_version}
@@ -111,7 +111,7 @@ export function OnboardMonitor({ tick, history, scenarioName }: OnboardMonitorPr
                 layer="L1"
               />
               <ScoreBar
-                label="Layer L2 — Channel (Aissou)"
+                label="Warstwa L2 — Kanał (Aissou)"
                 ratio={tick.scores.L2.ratio}
                 threshold={tick.scores.L2.threshold}
                 modelVersion={tick.scores.L2.model_version}
@@ -140,9 +140,9 @@ export function OnboardMonitor({ tick, history, scenarioName }: OnboardMonitorPr
           transition={{ duration: 0.25, delay: 0.2 }}
         >
           <Stat label="Tick" value={tick ? `#${tick.tick}` : "—"} />
-          <Stat label="Dominant" value={tick?.dominant_layer ?? "—"} />
-          <Stat label="Inference" value={tick ? `${tick.inference_ms.xgboost.toFixed(1)} ms` : "—"} />
-          <Stat label="Attack flag" value={tick ? (tick.is_attack ? "TRUE" : "false") : "—"} />
+          <Stat label="Dominująca warstwa" value={tick?.dominant_layer ?? "—"} />
+          <Stat label="Inferencja" value={tick ? `${tick.inference_ms.xgboost.toFixed(1)} ms` : "—"} />
+          <Stat label="Flaga ataku" value={tick ? (tick.is_attack ? "TAK" : "nie") : "—"} />
         </motion.div>
       </div>
 
@@ -155,9 +155,9 @@ export function OnboardMonitor({ tick, history, scenarioName }: OnboardMonitorPr
       >
         <div className="px-3 py-2 border-b border-slate-800 flex items-center gap-2">
           <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
-          <span className="text-[11px] tracking-wider uppercase text-slate-400 font-medium">Alert feed</span>
+          <span className="text-[11px] tracking-wider uppercase text-slate-400 font-medium">Dziennik alertów</span>
           <span className="ml-auto font-mono text-[10px] text-slate-500">
-            {alertEvents.length}/{history.length} events
+            {alertEvents.length}/{history.length} zdarzeń
           </span>
         </div>
         <ScrollArea className="flex-1">

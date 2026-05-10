@@ -42,10 +42,10 @@ export function IncidentsMap() {
       <CardHeader className="px-4 gap-1">
         <CardTitle className="flex items-center gap-2 text-sm text-slate-200">
           <MapPin className="h-4 w-4 text-[#EE3124]" />
-          Incidents map
+          Mapa incydentów
         </CardTitle>
         <span className="text-[10px] uppercase tracking-wider text-slate-500 font-mono">
-          Historical GPS spoofing events
+          Historyczne zdarzenia spoofingu GPS
         </span>
       </CardHeader>
       <CardContent className="px-3 pb-3 flex-1">

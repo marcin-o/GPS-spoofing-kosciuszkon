@@ -99,8 +99,8 @@ export function ReplayGlobe({ ticks, currentTick }: ReplayGlobeProps) {
             Tick #{tick.tick}
           </span>
           <span className="text-emerald-400">OK: {counts.OK}</span>
-          <span className="text-amber-400">WARN: {counts.WARNING}</span>
-          <span className="text-red-500">CRIT: {counts.CRITICAL}</span>
+          <span className="text-amber-400">OSTRZ: {counts.WARNING}</span>
+          <span className="text-red-500">KRYT: {counts.CRITICAL}</span>
           <span className="ml-auto text-slate-500">{sorted.length} samolotów</span>
         </div>
 
@@ -113,7 +113,7 @@ export function ReplayGlobe({ ticks, currentTick }: ReplayGlobeProps) {
                 <th className="text-left px-2 py-2">Kraj</th>
                 <th className="text-right px-2 py-2">Ratio</th>
                 <th className="text-left px-2 py-2">Model</th>
-                <th className="text-right px-3 py-2">Verdict</th>
+                <th className="text-right px-3 py-2">Werdykt</th>
               </tr>
             </thead>
             <tbody>
@@ -198,7 +198,7 @@ export function ReplayGlobe({ ticks, currentTick }: ReplayGlobeProps) {
 
               <div className="border border-slate-800 bg-slate-900/60 rounded-sm p-3 flex flex-col gap-2">
                 <span className="text-[11px] tracking-wider uppercase text-slate-400 font-medium">
-                  Ensemble breakdown
+                  Rozbicie ensemble
                 </span>
                 {(["iforest_v1", "iforest_v2"] as const).map((sub) => {
                   const isDom = domSub === sub;
@@ -206,7 +206,7 @@ export function ReplayGlobe({ ticks, currentTick }: ReplayGlobeProps) {
                     <div key={sub} className={`rounded-sm px-2 py-1 ${isDom ? "ring-1 ring-indigo-500/50 bg-indigo-500/5" : ""}`}>
                       <ScoreBar
                         thin
-                        label={`${SUBMODEL_LABELS[sub]?.name ?? sub}${isDom ? " ← dominant" : ""}`}
+                        label={`${SUBMODEL_LABELS[sub]?.name ?? sub}${isDom ? " ← dominujący" : ""}`}
                         ratio={selectedAc.sub_scores[sub].ratio}
                         threshold={1.0}
                         modelVersion={sub}

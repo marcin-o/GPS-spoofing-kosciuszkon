@@ -36,10 +36,10 @@ export function ComparisonTable() {
       <CardHeader className="px-4 gap-1">
         <CardTitle className="flex items-center gap-2 text-sm text-slate-200">
           <TableProperties className="h-4 w-4 text-[#EE3124]" />
-          Model comparison
+          Porównanie modeli
         </CardTitle>
         <span className="text-[10px] uppercase tracking-wider text-slate-500 font-mono">
-          Held-out test per layer · honest calibration (Faza 11)
+          Test held-out per warstwa · uczciwa kalibracja (Faza 11)
         </span>
       </CardHeader>
       <CardContent className="px-2 pb-2">
@@ -47,10 +47,10 @@ export function ComparisonTable() {
           <TableHeader>
             <TableRow className="hover:bg-transparent border-slate-800">
               <TableHead className="text-[10px] uppercase tracking-wider text-slate-500">Model</TableHead>
-              <TableHead className="text-[10px] uppercase tracking-wider text-slate-500">Dataset</TableHead>
+              <TableHead className="text-[10px] uppercase tracking-wider text-slate-500">Zbiór danych</TableHead>
               <TableHead className="text-right text-[10px] uppercase tracking-wider text-slate-500">F1</TableHead>
-              <TableHead className="text-right text-[10px] uppercase tracking-wider text-slate-500">Precision</TableHead>
-              <TableHead className="text-right text-[10px] uppercase tracking-wider text-slate-500">Recall</TableHead>
+              <TableHead className="text-right text-[10px] uppercase tracking-wider text-slate-500">Precyzja</TableHead>
+              <TableHead className="text-right text-[10px] uppercase tracking-wider text-slate-500">Czułość</TableHead>
               <TableHead className="text-right text-[10px] uppercase tracking-wider text-slate-500">AUC</TableHead>
               <TableHead className="text-right text-[10px] uppercase tracking-wider text-slate-500">Status</TableHead>
             </TableRow>

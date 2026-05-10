@@ -3,25 +3,25 @@ import type { Incident, IncidentAnnotation } from "@/lib/types";
 export const INCIDENTS_FALLBACK: Incident[] = [
   {
     id: "flight-8243",
-    title: "AZAL Flight 8243",
+    title: "AZAL — lot 8243",
     date: "2024-12-25",
-    region: "Caspian Sea — Grozny → Aktau",
+    region: "Morze Kaspijskie — Grozny → Aktau",
     narrative:
-      "Embraer 190 lost GPS over Grozny under heavy spoofing, was steered across the Caspian and crashed near Aktau. 38 dead, 29 survivors.",
-    attack_pattern: "L1 signal drift + position teleport",
-    casualties: "38 fatalities / 29 survivors",
+      "Embraer 190 stracił GPS nad Groznym podczas intensywnego spoofingu, został sprowadzony nad Morze Kaspijskie i rozbił się pod Aktau. 38 ofiar, 29 ocalałych.",
+    attack_pattern: "Drift sygnału L1 + skok pozycji",
+    casualties: "38 ofiar / 29 ocalałych",
     linked_scenario_id: "texbat_spoof",
     lat: 43.86,
     lon: 51.09,
   },
   {
     id: "hormuz-2025",
-    title: "Strait of Hormuz mass spoofing",
+    title: "Cieśnina Ormuz — masowy spoofing",
     date: "2025-06-18",
-    region: "Strait of Hormuz / Bandar Abbas",
+    region: "Cieśnina Ormuz / Bandar Abbas",
     narrative:
-      "Over 1,100 vessels reported false positions inside Bandar Abbas airport in 24h. Coordinated AIS/GNSS spoofing; commercial shipping delayed for days.",
-    attack_pattern: "Cluster channel + ensemble drift",
+      "Ponad 1100 jednostek raportowało fałszywe pozycje wewnątrz lotniska Bandar Abbas w ciągu 24h. Skoordynowany spoofing AIS/GNSS; transport handlowy opóźniony przez kilka dni.",
+    attack_pattern: "Klaster kanałów + drift ensemble",
     casualties: null,
     linked_scenario_id: "baltic_teleport",
     lat: 26.55,
@@ -29,12 +29,12 @@ export const INCIDENTS_FALLBACK: Incident[] = [
   },
   {
     id: "beirut-2024",
-    title: "Beirut Airport ghost-fleet",
+    title: "Lotnisko Bejrut — flota duchów",
     date: "2024-04-09",
-    region: "Beirut Rafic Hariri Intl.",
+    region: "Bejrut Rafic Hariri Intl.",
     narrative:
-      "117 ships displayed identical position inside Beirut airport apron. Pattern matched the 2024 Cyprus spoofing campaign attributed to regional jamming.",
-    attack_pattern: "Ensemble anomaly (LSTM-AE)",
+      "117 statków wyświetliło identyczną pozycję na płycie lotniska Bejrut. Wzorzec pokrywa się z kampanią cypryjską 2024 przypisywaną regionalnemu zagłuszaniu.",
+    attack_pattern: "Anomalia ensemble (LSTM-AE)",
     casualties: null,
     linked_scenario_id: "smooth_drift_fleet",
     lat: 33.82,
@@ -44,18 +44,18 @@ export const INCIDENTS_FALLBACK: Incident[] = [
 
 export const INCIDENT_ANNOTATIONS: Record<string, IncidentAnnotation[]> = {
   "flight-8243": [
-    { tick: 30, label: "GPS integrity normal", icon: "check" },
-    { tick: 80, label: "NIC drop detected", icon: "alert" },
-    { tick: 120, label: "Sentinel: spoofing confirmed", icon: "shield" },
-    { tick: 180, label: "Crew reverts to inertial nav", icon: "plane" },
+    { tick: 30, label: "Integralność GPS w normie", icon: "check" },
+    { tick: 80, label: "Wykryto spadek NIC", icon: "alert" },
+    { tick: 120, label: "BeDetector: spoofing potwierdzony", icon: "shield" },
+    { tick: 180, label: "Załoga przechodzi na nawigację inercyjną", icon: "plane" },
   ],
   "hormuz-2025": [
-    { tick: 20, label: "Cluster drift onset", icon: "alert" },
-    { tick: 90, label: "Ensemble flag raised", icon: "shield" },
+    { tick: 20, label: "Początek driftu klastra", icon: "alert" },
+    { tick: 90, label: "Ensemble podniósł flagę", icon: "shield" },
   ],
   "beirut-2024": [
-    { tick: 25, label: "Trajectory anomaly", icon: "alert" },
-    { tick: 95, label: "LSTM-AE reconstruction breach", icon: "shield" },
+    { tick: 25, label: "Anomalia trajektorii", icon: "alert" },
+    { tick: 95, label: "LSTM-AE przekroczył próg rekonstrukcji", icon: "shield" },
   ],
 };
 

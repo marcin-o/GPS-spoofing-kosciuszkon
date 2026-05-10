@@ -10,9 +10,9 @@ interface ModelFooterProps {
 export function ModelFooter({ health, mockMode }: ModelFooterProps) {
   return (
     <footer className="border-t border-slate-800 bg-slate-950/95 px-4 py-1.5 flex items-center gap-4 text-[10px] font-mono tracking-wider uppercase text-slate-500 overflow-x-auto">
-      <span>MODELS</span>
+      <span>MODELE</span>
       {mockMode ? (
-        <span className="text-amber-400">no backend — running on client mock</span>
+        <span className="text-amber-400">brak backendu — działa na mocku po stronie klienta</span>
       ) : health ? (
         <>
           {health.model_versions.map((m) => (
@@ -23,7 +23,7 @@ export function ModelFooter({ health, mockMode }: ModelFooterProps) {
           ))}
         </>
       ) : (
-        <span>connecting…</span>
+        <span>łączenie…</span>
       )}
       <span className="ml-auto text-slate-600 whitespace-nowrap">
         BUILD BEDETECTOR-0.2.0 · BEAUTH

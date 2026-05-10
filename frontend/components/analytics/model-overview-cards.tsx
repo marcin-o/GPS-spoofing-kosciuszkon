@@ -14,9 +14,9 @@ interface ModelTile {
 }
 
 const TILES: ModelTile[] = [
-  { layer: "L1", title: "Layer L1 — Signal", subtitle: "TEXBAT XGBoost", iconColor: "text-cyan-300" },
-  { layer: "L2", title: "Layer L2 — Channel", subtitle: "Aissou XGBoost", iconColor: "text-violet-300" },
-  { layer: "L3", title: "Layer L3 — Trajectory", subtitle: "IsolationForest ensemble", iconColor: "text-amber-300" },
+  { layer: "L1", title: "Warstwa L1 — Sygnał", subtitle: "TEXBAT XGBoost", iconColor: "text-cyan-300" },
+  { layer: "L2", title: "Warstwa L2 — Kanał", subtitle: "Aissou XGBoost", iconColor: "text-violet-300" },
+  { layer: "L3", title: "Warstwa L3 — Trajektoria", subtitle: "Ensemble IsolationForest", iconColor: "text-amber-300" },
 ];
 
 export function ModelOverviewCards() {
@@ -64,7 +64,7 @@ export function ModelOverviewCards() {
                 </div>
                 <div className="flex flex-col gap-0.5">
                   <span className="text-[10px] uppercase tracking-wider text-slate-500 flex items-center gap-1">
-                    <Cpu className="h-3 w-3" /> Latency
+                    <Cpu className="h-3 w-3" /> Latencja
                   </span>
                   {latency != null ? (
                     <span className="font-mono tabular-nums text-2xl font-semibold text-slate-200">

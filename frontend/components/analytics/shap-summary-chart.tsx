@@ -11,10 +11,10 @@ export function ShapSummaryChart() {
       <CardHeader className="px-4 gap-1">
         <CardTitle className="flex items-center gap-2 text-sm text-slate-200">
           <Sparkles className="h-4 w-4 text-[#EE3124]" />
-          SHAP — global
+          SHAP — globalnie
         </CardTitle>
         <span className="text-[10px] uppercase tracking-wider text-slate-500 font-mono">
-          Mean |contribution| · positive share = red
+          Średnia |kontrybucja| · udział pozytywny = czerwony
         </span>
       </CardHeader>
       <CardContent className="px-2 pb-3 flex-1">
@@ -53,7 +53,7 @@ export function ShapSummaryChart() {
                   const share = payload?.positiveShare ?? 0;
                   return [
                     Number(value).toFixed(3),
-                    `mean |SHAP|  ·  +${(share * 100).toFixed(0)}% positive`,
+                    `średnia |SHAP|  ·  +${(share * 100).toFixed(0)}% pozytywne`,
                   ];
                 }}
               />
