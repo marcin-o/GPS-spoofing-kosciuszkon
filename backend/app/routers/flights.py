@@ -8,7 +8,7 @@ from typing import Any
 from fastapi import APIRouter, HTTPException, Query
 
 from app.schemas.flight import Flight
-from app.services import opensky
+from app.services import live_replay, opensky
 from app.services.data_loader import flights_fixture
 from app.services.scoring import (
     heuristic_features,
@@ -110,9 +110,25 @@ def _jitter_fixture(items: list[dict[str, Any]]) -> list[Flight]:
 @router.get("/live", response_model=list[Flight])
 async def live_flights(bbox: str | None = Query(default=None)) -> list[Flight]:
     parsed = _parse_bbox(bbox)
+
     states = await opensky.fetch_states(parsed)
     if states:
         return [_score_flight(s) for s in states if s.get("latitude") and s.get("longitude")]
 
+    if live_replay.is_available():
+        replay_states = live_replay.snapshot_in_bbox(parsed)
+        return [_score_flight(s) for s in replay_states if s.get("latitude") and s.get("longitude")]
+
     fixture = [f for f in flights_fixture() if _within(f["lat"], f["lon"], parsed)]
     return _jitter_fixture(fixture)
+
+
+@router.get("/replay_status")
+async def replay_status() -> dict[str, Any]:
+    """Diagnostic endpoint — exposes current snapshot index + total snapshots."""
+    return {
+        "available": live_replay.is_available(),
+        "n_snapshots": live_replay.n_snapshots(),
+        "current_idx": live_replay.current_idx(),
+        "tick_interval_s": live_replay.TICK_INTERVAL_S,
+    }
