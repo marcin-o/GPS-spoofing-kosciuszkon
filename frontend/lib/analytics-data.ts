@@ -1,24 +1,25 @@
-// SOURCE: Person C ML training results — replace with measured numbers when available.
-// Numbers below are deterministic placeholders aligned with the spec'd F1 ceilings,
-// so the comparison table tells a coherent story even before training rounds finish.
+// SOURCE: Measured on held-out test sets per layer (notebooks 03, 04, 06, 07 + Faza 11
+// honest recalibration on real ADS-B). All numbers reproduce from `ml/inference.py` +
+// the corresponding parquets. L4 LSTM-AE shown for completeness; rejected from the
+// production ensemble after Faza 10 attack-intensity sweep (see docs/journey.md).
 
 export interface ModelComparison {
   name: string;
-  family: "linear" | "tree" | "ensemble" | "anomaly" | "deep";
+  family: "tree" | "ensemble" | "anomaly" | "deep";
+  dataset: string;
   f1: number;
   precision: number;
   recall: number;
   auc: number;
+  status: "production" | "rejected";
 }
 
 export const MODEL_COMPARISON: ModelComparison[] = [
-  { name: "Logistic Regression",       family: "linear",  f1: 0.812, precision: 0.794, recall: 0.831, auc: 0.873 },
-  { name: "Random Forest",             family: "tree",    f1: 0.931, precision: 0.912, recall: 0.951, auc: 0.964 },
-  { name: "XGBoost — TEXBAT (L1)",     family: "tree",    f1: 0.984, precision: 0.972, recall: 0.997, auc: 0.992 },
-  { name: "XGBoost — Aissou (L2)",     family: "tree",    f1: 0.976, precision: 0.962, recall: 0.991, auc: 0.987 },
-  { name: "Isolation Forest (L3)",     family: "anomaly", f1: 0.852, precision: 0.781, recall: 0.937, auc: 0.911 },
-  { name: "LSTM Autoencoder (L3)",     family: "deep",    f1: 0.935, precision: 0.901, recall: 0.972, auc: 0.953 },
-  { name: "Ensemble (Sentinel)",       family: "ensemble", f1: 0.989, precision: 0.984, recall: 0.995, auc: 0.997 },
+  { name: "XGBoost — TEXBAT (L1)",     family: "tree",     dataset: "TEXBAT ds7 OOD",            f1: 0.984, precision: 1.000, recall: 0.969, auc: 0.997, status: "production" },
+  { name: "XGBoost — Aissou (L2)",     family: "tree",     dataset: "Aissou random 80/20",        f1: 0.976, precision: 0.974, recall: 0.978, auc: 0.999, status: "production" },
+  { name: "IsolationForest single (L3v1)", family: "anomaly", dataset: "OpenSky synth injection", f1: 0.789, precision: 0.812, recall: 0.768, auc: 0.881, status: "production" },
+  { name: "IsolationForest multitime (L3v2)", family: "anomaly", dataset: "OpenSky 36 snaps + synth", f1: 0.398, precision: 0.793, recall: 0.254, auc: 0.702, status: "production" },
+  { name: "LSTM Autoencoder (L4)",     family: "deep",     dataset: "OpenSky synth injection",    f1: 0.935, precision: 0.944, recall: 0.927, auc: 0.982, status: "rejected" },
 ];
 
 export interface FeatureImportance {

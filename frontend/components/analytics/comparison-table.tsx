@@ -14,7 +14,6 @@ import { TableProperties } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const FAMILY_COLOR: Record<string, string> = {
-  linear: "text-slate-400",
   tree: "text-cyan-300",
   ensemble: "text-[#EE3124]",
   anomaly: "text-amber-300",
@@ -40,7 +39,7 @@ export function ComparisonTable() {
           Model comparison
         </CardTitle>
         <span className="text-[10px] uppercase tracking-wider text-slate-500 font-mono">
-          Held-out test split · scenario-mixed
+          Held-out test per layer · honest calibration (Faza 11)
         </span>
       </CardHeader>
       <CardContent className="px-2 pb-2">
@@ -48,16 +47,25 @@ export function ComparisonTable() {
           <TableHeader>
             <TableRow className="hover:bg-transparent border-slate-800">
               <TableHead className="text-[10px] uppercase tracking-wider text-slate-500">Model</TableHead>
+              <TableHead className="text-[10px] uppercase tracking-wider text-slate-500">Dataset</TableHead>
               <TableHead className="text-right text-[10px] uppercase tracking-wider text-slate-500">F1</TableHead>
               <TableHead className="text-right text-[10px] uppercase tracking-wider text-slate-500">Precision</TableHead>
               <TableHead className="text-right text-[10px] uppercase tracking-wider text-slate-500">Recall</TableHead>
               <TableHead className="text-right text-[10px] uppercase tracking-wider text-slate-500">AUC</TableHead>
+              <TableHead className="text-right text-[10px] uppercase tracking-wider text-slate-500">Status</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {MODEL_COMPARISON.map((m) => (
-              <TableRow key={m.name} className="hover:bg-slate-900/40 border-slate-900">
+              <TableRow
+                key={m.name}
+                className={cn(
+                  "hover:bg-slate-900/40 border-slate-900",
+                  m.status === "rejected" && "opacity-60",
+                )}
+              >
                 <TableCell className={cn("font-mono text-xs", FAMILY_COLOR[m.family])}>{m.name}</TableCell>
+                <TableCell className="font-mono text-[11px] text-slate-400">{m.dataset}</TableCell>
                 <TableCell className={cn("text-right tabular-nums font-mono text-xs", tone(m.f1, 0.9))}>
                   {m.f1.toFixed(3)}
                 </TableCell>
@@ -69,6 +77,14 @@ export function ComparisonTable() {
                 </TableCell>
                 <TableCell className={cn("text-right tabular-nums font-mono text-xs", tone(m.auc, 0.9))}>
                   {m.auc.toFixed(3)}
+                </TableCell>
+                <TableCell
+                  className={cn(
+                    "text-right text-[10px] uppercase tracking-wider font-mono",
+                    m.status === "production" ? "text-emerald-300" : "text-rose-400",
+                  )}
+                >
+                  {m.status}
                 </TableCell>
               </TableRow>
             ))}
