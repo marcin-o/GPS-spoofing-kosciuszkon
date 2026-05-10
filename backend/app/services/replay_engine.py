@@ -171,3 +171,13 @@ def inject(scenario_id: str) -> int:
 def reset(scenario_id: str) -> None:
     _inject_until.pop(scenario_id, None)
     logger.info("inject reset scenario=%s", scenario_id)
+
+
+def get_onboard_scored_direct(scenario_id: str) -> "ml_service.OnboardScored":
+    """Return cached OnboardScored (pre-scoring if needed). Used by payload_builder."""
+    return ml_service.get_onboard_scored(scenario_id, _csv_path(scenario_id))
+
+
+def get_globe_scored_direct(scenario_id: str) -> "ml_service.GlobeScored":
+    """Return cached GlobeScored (pre-scoring if needed). Used by payload_builder."""
+    return ml_service.get_globe_scored(scenario_id, _csv_path(scenario_id))

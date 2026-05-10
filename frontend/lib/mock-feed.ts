@@ -1,4 +1,4 @@
-import type { GlobeTick, OnboardTick, Verdict } from "./types";
+import type { GlobeTick, OnboardTick, ReplayBundle, Verdict } from "./types";
 
 const FLEET = [
   { icao24: "4ca87b", cs: "RYR2KE", country: "Ireland", lat: 54.4, lon: 18.5, alt: 11000, vel: 230, hdg: 90 },
@@ -189,4 +189,31 @@ function buildGlobeTick(scenario: string, state: GlobeFeedState): GlobeTick {
     aircraft,
     inference_ms: { ensemble_per_100ac: 48, total: aircraft.length * 0.48 },
   };
+}
+
+// ─────────────────────────────────────────────── mock replay bundles
+
+const ONBOARD_SCENARIOS = new Set(["normal_waw_gdn", "texbat_spoof", "aissou_channel_attack"]);
+
+export function buildMockReplay(scenario: string, n = 200): ReplayBundle {
+  const isOnboard = ONBOARD_SCENARIOS.has(scenario);
+
+  if (isOnboard) {
+    const state: OnboardFeedState = { tickIdx: 0, injectedAtTick: null, lat: 52.165, lon: 20.967 };
+    const ticks: OnboardTick[] = [];
+    for (let i = 0; i < n; i++) {
+      state.tickIdx = i;
+      ticks.push({ ...buildOnboardTick(scenario, state), effective_tick: i } as OnboardTick & { effective_tick: number });
+    }
+    return { kind: "replay_init", scenario_id: scenario, mode: "onboard", duration_s: n * 0.5, ticks };
+  }
+
+  const fleet = FLEET.map((f) => ({ ...f }));
+  const state: GlobeFeedState = { tickIdx: 0, injectedAtTick: null, fleet };
+  const ticks: GlobeTick[] = [];
+  for (let i = 0; i < n; i++) {
+    state.tickIdx = i;
+    ticks.push({ ...buildGlobeTick(scenario, state), effective_tick: i } as GlobeTick & { effective_tick: number });
+  }
+  return { kind: "replay_init", scenario_id: scenario, mode: "live_globe", duration_s: n * 1.5, ticks };
 }

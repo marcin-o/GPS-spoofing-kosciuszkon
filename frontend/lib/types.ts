@@ -1,6 +1,6 @@
 export type Verdict = "OK" | "WARNING" | "CRITICAL";
 
-export type Mode = "onboard" | "live_globe";
+export type Mode = "onboard" | "live_globe" | "replay";
 
 export interface Scenario {
   id: string;
@@ -81,4 +81,12 @@ export interface GlobeTick {
   scenario_id: string;
   aircraft: AircraftEntry[];
   inference_ms: { ensemble_per_100ac: number; total: number };
+}
+
+export interface ReplayBundle {
+  kind: "replay_init";
+  scenario_id: string;
+  mode: "onboard" | "live_globe";
+  duration_s: number;
+  ticks: OnboardTick[] | GlobeTick[];
 }

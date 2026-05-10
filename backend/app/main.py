@@ -20,6 +20,7 @@ from app.routers import (
     health,
     incidents,
     onboard_ws,
+    replay_ws,
     report,
     scenarios,
     score,
@@ -62,6 +63,7 @@ app.include_router(alerts_speak.router, prefix="/api")
 # WebSockets — no /api prefix per spec.
 app.include_router(onboard_ws.router)
 app.include_router(globe_ws.router)
+app.include_router(replay_ws.router)
 
 
 @app.on_event("startup")

@@ -8,36 +8,17 @@ from __future__ import annotations
 
 import asyncio
 import logging
-import time
 
 from fastapi import APIRouter, Query, WebSocket, WebSocketDisconnect
 
-from app.services import alert_mapper, replay_engine
+from app.services import payload_builder, replay_engine
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
 def _build_payload(scenario_id: str, monotonic_tick: int) -> dict:
-    aircraft, eff = replay_engine.globe_tick_batch(scenario_id, monotonic_tick)
-    enriched = []
-    for a in aircraft:
-        sub_dom = a["dominant_submodel"]
-        ratio = a["ensemble_score"]["ratio"]
-        enriched.append({
-            **a,
-            "last_contact": int(time.time() * 1000),
-            "top_reasons": alert_mapper.globe_reasons(sub_dom, ratio, {}),
-        })
-    return {
-        "t": int(time.time() * 1000),
-        "tick": monotonic_tick,
-        "effective_tick": eff,
-        "context": "live_globe",
-        "scenario_id": scenario_id,
-        "aircraft": enriched,
-        "inference_ms": {"ensemble_per_100ac": 0.0, "total": 0.0},  # pre-scored
-    }
+    return payload_builder.build_globe_payload(scenario_id, monotonic_tick)
 
 
 @router.websocket("/ws/globe")

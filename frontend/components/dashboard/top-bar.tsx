@@ -1,6 +1,6 @@
 "use client";
 
-import { Activity, Crosshair, Globe, Plane, Radar, Zap } from "lucide-react";
+import { Activity, Crosshair, Globe, History, Plane, Radar, Zap } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Mode, Scenario } from "@/lib/types";
 
@@ -29,7 +29,7 @@ export function TopBar({
   mockMode,
   injectFlash,
 }: TopBarProps) {
-  const filteredScenarios = scenarios.filter((s) => s.mode === mode);
+  const filteredScenarios = mode === "replay" ? scenarios : scenarios.filter((s) => s.mode === mode);
 
   return (
     <header className="border-b border-slate-800 bg-slate-950/95 backdrop-blur sticky top-0 z-40">
@@ -59,13 +59,24 @@ export function TopBar({
           <button
             onClick={() => onModeChange("live_globe")}
             className={cn(
-              "flex items-center gap-1.5 px-3 py-1.5 tracking-wider uppercase transition-colors",
+              "flex items-center gap-1.5 px-3 py-1.5 tracking-wider uppercase transition-colors border-r border-slate-800",
               mode === "live_globe"
                 ? "bg-[#EE3124]/15 text-[#EE3124]"
                 : "text-slate-400 hover:bg-slate-900 hover:text-slate-200",
             )}
           >
             <Globe className="h-3.5 w-3.5" /> Live Globe
+          </button>
+          <button
+            onClick={() => onModeChange("replay")}
+            className={cn(
+              "flex items-center gap-1.5 px-3 py-1.5 tracking-wider uppercase transition-colors",
+              mode === "replay"
+                ? "bg-indigo-500/15 text-indigo-400"
+                : "text-slate-400 hover:bg-slate-900 hover:text-slate-200",
+            )}
+          >
+            <History className="h-3.5 w-3.5" /> Replay
           </button>
         </div>
 
@@ -99,15 +110,17 @@ export function TopBar({
             </span>
           </div>
 
-          <button
-            onClick={onInject}
-            className={cn(
-              "flex items-center gap-1.5 bg-[#EE3124] hover:bg-[#cc2820] text-white font-medium text-xs uppercase tracking-wider px-3 py-1.5 rounded-sm transition-all",
-              injectFlash && "ring-2 ring-[#EE3124] animate-pulse",
-            )}
-          >
-            <Zap className="h-3.5 w-3.5" /> Inject Attack
-          </button>
+          {mode !== "replay" && (
+            <button
+              onClick={onInject}
+              className={cn(
+                "flex items-center gap-1.5 bg-[#EE3124] hover:bg-[#cc2820] text-white font-medium text-xs uppercase tracking-wider px-3 py-1.5 rounded-sm transition-all",
+                injectFlash && "ring-2 ring-[#EE3124] animate-pulse",
+              )}
+            >
+              <Zap className="h-3.5 w-3.5" /> Inject Attack
+            </button>
+          )}
 
           <button
             onClick={onExport}

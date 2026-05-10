@@ -10,6 +10,7 @@ import { LiveGlobe } from "./live-globe";
 import { ModelFooter } from "./model-footer";
 import { AlertSystem, type AlertEvent } from "./alert-system";
 import type { Verdict } from "@/lib/types";
+import { ReplayView } from "@/components/replay/replay-view";
 
 const FALLBACK_SCENARIOS: Scenario[] = [
   { id: "normal_waw_gdn", name: "Lot normalny: WAW → GDN", mode: "onboard", duration_s: 20, expected_dominant_layer: null, description: "Czyste odczyty WAW→GDN." },
@@ -86,7 +87,9 @@ export function DashboardClient() {
   }, []);
 
   // Pin the scenario to whatever's available for the active mode.
+  // In replay mode all scenarios are valid — no filtering needed.
   useEffect(() => {
+    if (mode === "replay") return;
     const filtered = scenarios.filter((s) => s.mode === mode);
     if (filtered.length === 0) return;
     if (!filtered.some((s) => s.id === scenario)) {
@@ -95,6 +98,7 @@ export function DashboardClient() {
   }, [mode, scenarios, scenario]);
 
   // Open WS on mode/scenario change. If backend offline, fall back to mock.
+  // Replay mode manages its own data fetching inside ReplayView — skip WS here.
   useEffect(() => {
     // Cleanup any prior connection or mock loop.
     wsRef.current?.close();
@@ -109,6 +113,8 @@ export function DashboardClient() {
     lastOnboardVerdictRef.current = "OK";
     lastGlobeAcVerdictRef.current = new Map();
     ewmaRef.current = { L1: null, L2: null, lat_ms: null };
+
+    if (mode === "replay") return;
 
     if (mockMode) {
       const stop = mode === "onboard"
@@ -315,10 +321,18 @@ export function DashboardClient() {
       )}
 
       <main className="flex-1 min-h-0 flex flex-col">
-        {mode === "onboard" ? (
+        {mode === "onboard" && (
           <OnboardMonitor tick={onboardTick} history={onboardHistory} scenarioName={scenarioMeta?.name ?? scenario} />
-        ) : (
+        )}
+        {mode === "live_globe" && (
           <LiveGlobe tick={globeTick} history={globeHistory} scenarioName={scenarioMeta?.name ?? scenario} />
+        )}
+        {mode === "replay" && (
+          <ReplayView
+            scenario={scenario}
+            scenarioMeta={scenarioMeta ?? null}
+            mockMode={mockMode}
+          />
         )}
       </main>
 
