@@ -4,14 +4,10 @@ Each scenario CSV is pre-scored once (lazy on first reference) by
 ``ml_service.get_*_scored``, then ticks are streamed from the cached
 result. The engine exposes:
 
-  - ``onboard_tick(scenario_id, tick_idx)`` → ``(raw_row, scored_tick)``
-  - ``globe_tick_batch(scenario_id, tick_idx)`` → ``list[scored_aircraft]``
-  - ``inject(scenario_id)`` / ``reset(scenario_id)`` — fast-forward into
-    the attack window.
-
-Inject is implemented by mapping the WS handler's monotonic tick counter
-through ``effective_tick(scenario_id, idx)`` so the next emitted tick
-sits *after* the natural attack onset.
+  - ``onboard_tick(scenario_id, tick_idx)`` → ``(raw_row, scored, idx)``
+  - ``globe_tick_batch(scenario_id, tick_idx)`` → ``(aircraft_list, idx)``
+  - ``effective_tick(scenario_id, tick_idx)`` → identity helper
+    (kept as a stable name; payload_builder still emits the field).
 """
 from __future__ import annotations
 
@@ -29,7 +25,6 @@ SCENARIO_DIR = Path(__file__).resolve().parents[1] / "scenarios"
 
 
 _raw_cache: dict[str, list[dict[str, Any]]] = {}
-_inject_until: dict[str, int] = {}
 _lock = threading.Lock()
 
 
@@ -38,7 +33,7 @@ SCENARIOS = [
         "id": "normal_waw_gdn",
         "name": "Lot normalny: WAW → GDN",
         "mode": "onboard",
-        "duration_s": 20.0,
+        "duration_s": 25.0,
         "expected_dominant_layer": None,
         "description": "Czyste odczyty na trasie Warszawa-Gdańsk. Verdict pozostaje OK.",
     },
@@ -46,7 +41,7 @@ SCENARIOS = [
         "id": "texbat_spoof",
         "name": "TEXBAT spoofing (sygnał)",
         "mode": "onboard",
-        "duration_s": 20.0,
+        "duration_s": 25.0,
         "expected_dominant_layer": "L1",
         "description": "Atak na warstwie sygnałowej: power up, sqm asym, position drift.",
     },
@@ -54,7 +49,7 @@ SCENARIOS = [
         "id": "aissou_channel_attack",
         "name": "Atak kanałowy Aissou",
         "mode": "onboard",
-        "duration_s": 20.0,
+        "duration_s": 25.0,
         "expected_dominant_layer": "L2",
         "description": "Anomalia per-kanał na PRN3 i PRN5 (Aissou L2).",
     },
@@ -62,7 +57,7 @@ SCENARIOS = [
         "id": "baltic_teleport",
         "name": "Bałtyk: teleport",
         "mode": "live_globe",
-        "duration_s": 90.0,
+        "duration_s": 22.0,
         "expected_dominant_layer": "ensemble",
         "description": "Flotylla nad Bałtykiem; dwa samoloty wykonują skok pozycji ~280 km.",
     },
@@ -70,7 +65,7 @@ SCENARIOS = [
         "id": "smooth_drift_fleet",
         "name": "Płynny drift (live)",
         "mode": "live_globe",
-        "duration_s": 90.0,
+        "duration_s": 22.0,
         "expected_dominant_layer": "ensemble",
         "description": "Wolny, ciągły drift dwóch samolotów — wykrywany przez LSTM-AE (dynamic).",
     },
@@ -120,57 +115,32 @@ def _load_raw(scenario_id: str) -> list[dict[str, Any]]:
 
 
 def effective_tick(scenario_id: str, tick_idx: int) -> int:
-    """Apply inject fast-forward to a monotonic tick counter."""
-    skip = _inject_until.get(scenario_id, 0)
-    return max(tick_idx, skip)
+    """Identity wrapper. Kept for back-compat with payload_builder + the
+    ``effective_tick`` field in the replay WS payload (test_replay_ws asserts
+    on it). Used to map a monotonic counter through an inject fast-forward;
+    inject is gone, so this just returns ``tick_idx``."""
+    return tick_idx
 
 
 # ─────────────────────────────────────────────────── onboard
 
 def onboard_tick(scenario_id: str, tick_idx: int) -> tuple[dict, "ml_service.OnboardScored", int]:
-    """Returns (raw_row, scored, effective_idx)."""
+    """Returns (raw_row, scored, idx)."""
     rows = _load_raw(scenario_id)
     scored = ml_service.get_onboard_scored(scenario_id, _csv_path(scenario_id))
     n = len(rows)
-    eff = effective_tick(scenario_id, tick_idx) % n
-    return rows[eff], scored, eff
+    idx = tick_idx % n
+    return rows[idx], scored, idx
 
 
 # ─────────────────────────────────────────────────── globe
 
 def globe_tick_batch(scenario_id: str, tick_idx: int) -> tuple[list[dict], int]:
-    """Returns (scored_aircraft_list, effective_idx)."""
+    """Returns (scored_aircraft_list, idx)."""
     scored = ml_service.get_globe_scored(scenario_id, _csv_path(scenario_id))
     n = scored.n_ticks
-    eff = effective_tick(scenario_id, tick_idx) % n
-    return scored.aircraft_per_tick[eff], eff
-
-
-# ─────────────────────────────────────────────────── inject
-
-def inject(scenario_id: str) -> int:
-    """Fast-forward subsequent ticks past the natural attack onset.
-
-    Onboard CSVs: attack overlay starts at t=100, ramp to full intensity
-    over ~30 ticks → jump to 110 so verdicts immediately reflect the attack.
-
-    Globe CSVs: anomalies kick in at tick 8 (drift) or 12 (teleport) → jump
-    to 14 so subsequent batches show post-anomaly state.
-    """
-    meta = get_meta(scenario_id)
-    if meta is None:
-        return 0
-    # Onboard CSVs: attack ramp completes around t=130 (intensity=1.0).
-    # Globe CSVs: teleport at t=12, smooth_drift cumulative — t=20 is solidly in.
-    target = 135 if meta["mode"] == "onboard" else 20
-    _inject_until[scenario_id] = target
-    logger.info("inject scenario=%s → effective_tick≥%d", scenario_id, target)
-    return target
-
-
-def reset(scenario_id: str) -> None:
-    _inject_until.pop(scenario_id, None)
-    logger.info("inject reset scenario=%s", scenario_id)
+    idx = tick_idx % n
+    return scored.aircraft_per_tick[idx], idx
 
 
 def get_onboard_scored_direct(scenario_id: str) -> "ml_service.OnboardScored":
