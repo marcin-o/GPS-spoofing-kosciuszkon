@@ -12,12 +12,30 @@ interface ExplainModalProps {
   onClose: () => void;
 }
 
-interface ExplainPending {
+interface ShapFeature {
+  feature: string;
+  value: number;
+  contribution: number;
+}
+
+interface ExplainResponse {
   status: string;
   tick_id: string;
-  message: string;
-  placeholder_features: Array<{ feature: string; value: number | null; contribution: number | null }>;
+  scenario_id: string;
+  tick: number;
+  dominant_layer: "L1" | "L2";
+  model_version: string;
   model_versions: string[];
+  predicted_proba: number;
+  threshold: number;
+  ratio: number;
+  base_value: number;
+  top_features: ShapFeature[];
+  shap_summary: {
+    sum_positive: number;
+    sum_negative: number;
+    n_features_total: number;
+  };
 }
 
 /**
@@ -27,14 +45,20 @@ interface ExplainPending {
  * computed server-side; the SHAP TreeExplainer block is still a stub.
  */
 export function ExplainModal({ tick, onClose }: ExplainModalProps) {
-  const [shap, setShap] = useState<ExplainPending | null>(null);
+  const [shap, setShap] = useState<ExplainResponse | null>(null);
+  const [shapErr, setShapErr] = useState<string | null>(null);
   const tickId = `${tick.scenario_id}-${tick.tick}`;
 
   useEffect(() => {
+    setShap(null);
+    setShapErr(null);
     fetch(`${API_BASE}/api/explain/${encodeURIComponent(tickId)}`)
-      .then((r) => r.json())
+      .then(async (r) => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        return r.json() as Promise<ExplainResponse>;
+      })
       .then(setShap)
-      .catch(() => {/* ignore — SHAP is opt-in */});
+      .catch((e) => setShapErr(String(e?.message ?? e)));
   }, [tickId]);
 
   return (
@@ -115,23 +139,76 @@ export function ExplainModal({ tick, onClose }: ExplainModalProps) {
           </div>
         </div>
 
-        {/* SHAP placeholder — collapsed footer instead of dominating the panel */}
-        {shap && (
-          <div className="border-t border-slate-800 pt-3 mt-1">
-            <div className="text-[10px] tracking-wider uppercase text-amber-400/80 mb-1">
-              SHAP feature attribution: <span className="font-mono">{shap.status}</span>
-            </div>
-            <div className="text-[11px] text-slate-500 leading-relaxed">
-              {shap.message}.{" "}
-              <span className="text-slate-600">
-                Per-feature contributions ({shap.placeholder_features.length}) — TreeExplainer integration in progress.
-              </span>
-            </div>
+        {/* SHAP feature attribution */}
+        <div className="border-t border-slate-800 pt-3 mt-1">
+          <div className="flex items-baseline justify-between mb-2">
+            <span className="text-[10px] tracking-wider uppercase text-emerald-400/80">
+              SHAP — {shap?.dominant_layer ?? "…"} TreeExplainer
+            </span>
+            <span className="font-mono text-[9px] text-slate-500">
+              {shap?.model_version ?? "loading…"}
+            </span>
           </div>
-        )}
+
+          {shapErr && (
+            <div className="text-[11px] text-red-400 italic">
+              SHAP unavailable: {shapErr}
+            </div>
+          )}
+          {!shapErr && !shap && (
+            <div className="text-[11px] text-slate-500 italic">
+              Computing SHAP values…
+            </div>
+          )}
+          {shap && shap.top_features.length > 0 && (
+            <ShapBars features={shap.top_features} />
+          )}
+          {shap && (
+            <div className="text-[10px] text-slate-500 mt-2 font-mono">
+              base log-odds {fmt(shap.base_value)} · proba {shap.predicted_proba.toFixed(3)} (thr {shap.threshold.toFixed(3)} → ratio {shap.ratio.toFixed(2)}×)
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
+}
+
+function ShapBars({ features }: { features: ShapFeature[] }) {
+  const max = Math.max(...features.map((f) => Math.abs(f.contribution)), 1e-9);
+  return (
+    <ul className="flex flex-col gap-1">
+      {features.map((f) => {
+        const pct = (Math.abs(f.contribution) / max) * 100;
+        const positive = f.contribution > 0;
+        return (
+          <li key={f.feature} className="flex items-center gap-2 text-[11px] font-mono">
+            <span className="w-44 truncate text-slate-300" title={f.feature}>
+              {f.feature}
+            </span>
+            <span className="w-16 tabular-nums text-right text-slate-500">
+              {fmt(f.value)}
+            </span>
+            <div className="flex-1 h-3 bg-slate-900/60 rounded-sm relative overflow-hidden">
+              <div
+                className={`absolute top-0 bottom-0 ${positive ? "bg-red-500/70 left-1/2" : "bg-emerald-500/70 right-1/2"}`}
+                style={{ width: `${pct / 2}%` }}
+              />
+              <div className="absolute top-0 bottom-0 left-1/2 w-px bg-slate-700" />
+            </div>
+            <span className={`w-14 tabular-nums text-right ${positive ? "text-red-400" : "text-emerald-400"}`}>
+              {f.contribution >= 0 ? "+" : ""}{f.contribution.toFixed(3)}
+            </span>
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
+function fmt(v: number): string {
+  if (!Number.isFinite(v)) return "—";
+  return (v >= 0 ? "+" : "") + v.toFixed(3);
 }
 
 function ScoreCell({

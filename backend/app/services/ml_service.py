@@ -42,6 +42,8 @@ import numpy as np
 import pandas as pd
 
 from ml.inference import (
+    _zscore_against_baseline,
+    load_model,
     score_aissou,
     score_lstm_ae,
     score_opensky,
@@ -75,6 +77,12 @@ class OnboardScored:
     l2_threshold_calibrated: float
     l2_alert: list[bool]
     l2_model_version: str
+    # SHAP inputs: per-tick feature rows fed to each classifier. Shape
+    # (n_ticks, n_features) on the same scaling the model saw.
+    l1_X: np.ndarray | None = None  # z-scored TEXBAT features
+    l1_feature_names: list[str] | None = None
+    l2_X: np.ndarray | None = None  # raw Aissou features
+    l2_feature_names: list[str] | None = None
 
 
 @dataclass
@@ -114,10 +122,20 @@ def _prescore_onboard(scenario_id: str, csv_path: Path) -> OnboardScored:
     l1_thr = float(r_tx["threshold"])
     l1_alert = [p >= l1_thr for p in l1_proba]
     l1_version = "texbat-xgb-v1"
+    # Reproduce the z-scored matrix the model saw, so SHAP can use the
+    # same row at /api/explain time without re-loading the CSV.
+    tx_bundle = load_model("texbat")
+    tx_feat_cols = list(tx_bundle["feature_cols"])
+    lo, hi = 30, 100
+    tx_baseline = df.loc[(df["t_int"] >= lo) & (df["t_int"] < hi), tx_feat_cols]
+    l1_X = _zscore_against_baseline(df[tx_feat_cols], tx_baseline).to_numpy(dtype=np.float32)
 
     # ───── L2 — AISSOU (per-scenario p99 calibration on clean baseline)
     r_ai = score_aissou(df)
     l2_proba = list(map(float, r_ai["scores"]))
+    ai_bundle = load_model("aissou")
+    ai_feat_cols = list(ai_bundle["feature_cols"])
+    l2_X = df[ai_feat_cols].astype(np.float32).to_numpy()
     # Clean baseline = first 100 ticks where is_attack==0.
     is_attack = df["is_attack"].astype(int).tolist() if "is_attack" in df.columns else [0] * n
     baseline = [p for i, p in enumerate(l2_proba) if i < 100 and is_attack[i] == 0]
@@ -137,6 +155,8 @@ def _prescore_onboard(scenario_id: str, csv_path: Path) -> OnboardScored:
         l1_model_version=l1_version,
         l2_proba=l2_proba, l2_threshold_calibrated=thr, l2_alert=l2_alert,
         l2_model_version=l2_version,
+        l1_X=l1_X, l1_feature_names=tx_feat_cols,
+        l2_X=l2_X, l2_feature_names=ai_feat_cols,
     )
 
 
